@@ -12,12 +12,12 @@ class PaymentAccountDemoSeeder extends Seeder
     {
         PaymentAccount::firstOrCreate(
             ['method' => 'mfs', 'provider' => 'bKash', 'account_no' => '01700000000'],
-            ['account_name' => 'SifatFlow', 'instructions' => 'Send Money (not Payment), then enter the TrxID.', 'sort_order' => 1, 'is_active' => true],
+            ['account_name' => 'CreativeSacademy', 'instructions' => 'Send Money (not Payment), then enter the TrxID.', 'sort_order' => 1, 'is_active' => true],
         );
 
         PaymentAccount::firstOrCreate(
             ['method' => 'bank', 'provider' => 'City Bank', 'account_no' => '1234567890123'],
-            ['account_name' => 'SifatFlow Education Ltd.', 'branch' => 'Gulshan Branch', 'sort_order' => 2, 'is_active' => true],
+            ['account_name' => 'CreativeSacademy Education Ltd.', 'branch' => 'Gulshan Branch', 'sort_order' => 2, 'is_active' => true],
         );
     }
 }
