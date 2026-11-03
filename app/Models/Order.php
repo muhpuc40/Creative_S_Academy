@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -58,6 +60,33 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'order_list_id');
+    }
+
+    /**
+     * How long a new unpaid order (or one whose only proof was rejected) stays open for a
+     * payment before checkout() releases it. Once any money is verified the order no longer
+     * expires at all - see PaymentService::verify().
+     */
+    public const PAYMENT_WINDOW_HOURS = 24;
+
+    /**
+     * Orders that still hold their courses (and their batch seats): paid, partially paid, or
+     * pending and either not yet expired OR with a proof awaiting admin review. Shared by
+     * Batch::seatsTaken() and CheckoutService so "is this order still alive?" has one answer.
+     */
+    public function scopeLive(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereIn('status', [OrderStatus::PartiallyPaid, OrderStatus::Paid])
+                ->orWhere(function (Builder $p) {
+                    $p->where('status', OrderStatus::Pending)
+                        ->where(function (Builder $w) {
+                            $w->whereNull('expires_at')
+                                ->orWhere('expires_at', '>', now())
+                                ->orWhereHas('payments', fn(Builder $pay) => $pay->where('status', PaymentStatus::Pending));
+                        });
+                });
+        });
     }
 
     /** What's still owed. 0 once fully paid. */

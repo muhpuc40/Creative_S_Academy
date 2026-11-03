@@ -45,7 +45,10 @@ class PaymentService
             if (!in_array($order->status, [OrderStatus::Pending, OrderStatus::PartiallyPaid], true)) {
                 throw ValidationException::withMessages(['order_id' => 'This order has nothing left to pay, or is no longer payable.']);
             }
-            if ($order->expires_at && $order->expires_at->isPast()) {
+            // Only an order nobody has paid anything on yet can expire. Once a payment is verified
+            // (partially_paid) the student must be able to pay later installments whenever they
+            // fall due - weeks after checkout - so the 24h window no longer applies.
+            if ($order->status === OrderStatus::Pending && $order->expires_at && $order->expires_at->isPast()) {
                 throw ValidationException::withMessages(['order_id' => 'This order has expired. Please checkout again.']);
             }
 
@@ -138,6 +141,8 @@ class PaymentService
             $order->update([
                 'paid_amount' => $newPaidAmount,
                 'status' => $newStatus,
+                // Real money is in: this order is kept for good, it never expires from here on.
+                'expires_at' => null,
                 'completed_at' => $newStatus === OrderStatus::Paid ? ($order->completed_at ?? now()) : $order->completed_at,
             ]);
 
@@ -176,6 +181,14 @@ class PaymentService
                 'status' => InstallmentStatus::Unpaid,
                 'payment_id' => null,
             ]);
+
+            // The proof may have sat in the admin queue past the order's 24h window. A student who
+            // genuinely paid (and only mistyped the TrxID, say) gets a fresh window to resubmit
+            // instead of being told the order expired and having to check out all over again.
+            $order = Order::lockForUpdate()->find($payment->order_list_id);
+            if ($order && $order->status === OrderStatus::Pending && $order->expires_at && $order->expires_at->isPast()) {
+                $order->update(['expires_at' => now()->addHours(Order::PAYMENT_WINDOW_HOURS)]);
+            }
 
             return $payment->fresh(['installments.item.course', 'order']);
         });

@@ -28,22 +28,29 @@ class PaymentController extends Controller
         /** @var \App\Models\Student $student */
         $student = $request->user();
 
-        $payment = $payments->submit(
-            $student,
-            $request->integer('order_id'),
-            $request->input('installment_ids'),
-            [
-                'amount' => $request->input('amount'),
-                'method' => $request->input('method'),
-                'payment_account_id' => $request->integer('payment_account_id') ?: null,
-                'provider' => $request->input('provider'),
-                'sender_account' => $request->input('sender_account'),
-                'trx_id' => $request->input('trx_id'),
-                'proof_image' => $proofPath,
-                'paid_at' => $request->input('paid_at'),
-                'note' => $request->input('note'),
-            ],
-        );
+        try {
+            $payment = $payments->submit(
+                $student,
+                $request->integer('order_id'),
+                $request->input('installment_ids'),
+                [
+                    'amount' => $request->input('amount'),
+                    'method' => $request->input('method'),
+                    'payment_account_id' => $request->integer('payment_account_id') ?: null,
+                    'provider' => $request->input('provider'),
+                    'sender_account' => $request->input('sender_account'),
+                    'trx_id' => $request->input('trx_id'),
+                    'proof_image' => $proofPath,
+                    'paid_at' => $request->input('paid_at'),
+                    'note' => $request->input('note'),
+                ],
+            );
+        } catch (\Throwable $e) {
+            // Rejected (wrong amount, already paid, expired...): don't leave the uploaded
+            // screenshot behind with no payment row pointing at it.
+            Media::delete($proofPath);
+            throw $e;
+        }
 
         return response()->json(['data' => (new PaymentResource($payment))->resolve()], 201);
     }

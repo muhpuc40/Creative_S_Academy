@@ -29,9 +29,6 @@ use Illuminate\Validation\ValidationException;
  */
 class CheckoutService
 {
-    /** An unpaid order is cancelled this long after it's created (frees the seat and the voucher). */
-    private const ORDER_EXPIRES_HOURS = 24;
-
     public function __construct(private readonly EnrollmentService $enrollment)
     {
     }
@@ -125,25 +122,12 @@ class CheckoutService
             throw ValidationException::withMessages(['items' => 'One or more selected batches do not exist.']);
         }
 
-        // Already has a live order for one of these courses? A Pending order whose expires_at
-        // has passed doesn't count UNLESS it still has a payment awaiting admin review - this
-        // mirrors exactly what checkout() does for real (releaseExpiredOrders(), called before
-        // this method), so quote() never promises something checkout() wouldn't actually allow,
-        // even though quote() itself writes nothing.
+        // Already has a live order for one of these courses? Order::scopeLive() is the same rule
+        // checkout() applies for real (releaseExpiredOrders() runs before this) and the same one
+        // Batch::seatsTaken() uses, so quote() never promises something checkout() wouldn't allow.
         $owned = OrderItem::where('status', OrderItemStatus::Active)
             ->whereIn('course_list_id', $courseIds)
-            ->whereHas('order', fn($q) => $q->where('student_id', $student->id)
-                ->where(function ($q2) {
-                    $q2->whereIn('status', [OrderStatus::PartiallyPaid, OrderStatus::Paid])
-                        ->orWhere(function ($q3) {
-                            $q3->where('status', OrderStatus::Pending)
-                                ->where(function ($q4) {
-                                    $q4->whereNull('expires_at')
-                                        ->orWhere('expires_at', '>', now())
-                                        ->orWhereHas('payments', fn($p) => $p->where('status', PaymentStatus::Pending));
-                                });
-                        });
-                }))
+            ->whereHas('order', fn($q) => $q->where('student_id', $student->id)->live())
             ->first();
         if ($owned) {
             $title = $courses[$owned->course_list_id]->title ?? 'a selected course';
@@ -318,11 +302,18 @@ class CheckoutService
             'voucher_discount' => $priced['voucher_discount'],
             'total' => $total,
             'paid_amount' => 0,
-            'expires_at' => $isFree ? null : now()->addHours(self::ORDER_EXPIRES_HOURS),
+            'expires_at' => $isFree ? null : now()->addHours(Order::PAYMENT_WINDOW_HOURS),
             'completed_at' => $isFree ? now() : null,
         ]);
 
         foreach ($priced['items'] as $item) {
+            // Nothing to collect for this course: the whole order is free (100% voucher), or this
+            // one course is free (a 0-price course bought alongside paid ones). Its dues are born
+            // paid - the state PaymentService::verify() would otherwise leave them in - so it is
+            // enrolled now. Without this, a 0-amount due could never be paid (a payment must be
+            // at least 0.01) and the free course would never unlock.
+            $itemFree = $isFree || (float) $item['net_price'] <= 0.0;
+
             /** @var OrderItem $orderItem */
             $orderItem = $order->items()->create([
                 'course_list_id' => $item['course']->id,
@@ -344,17 +335,12 @@ class CheckoutService
                     'title' => $inst['title'],
                     'amount' => $inst['amount'],
                     'due_before_module_id' => $inst['due_before_module_id'],
-                    'status' => $isFree ? InstallmentStatus::Paid : InstallmentStatus::Unpaid,
-                    'paid_at' => $isFree ? now() : null,
+                    'status' => $itemFree ? InstallmentStatus::Paid : InstallmentStatus::Unpaid,
+                    'paid_at' => $itemFree ? now() : null,
                 ]);
             }
 
-            // A free item (voucher covered 100%) is born with every installment already paid -
-            // that's exactly the state PaymentService::verify() would leave it in, so it gets
-            // enrolled and (if this order carries an attribution) its affiliate conversion made
-            // the same way, via the same shared service. Otherwise this item just sits Unpaid
-            // until a real payment is verified, same as always.
-            if ($isFree) {
+            if ($itemFree) {
                 $this->enrollment->syncItemState($orderItem->load('installments'), $order);
             }
         }

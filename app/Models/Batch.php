@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Enums\BatchStatus;
 use App\Enums\OrderItemStatus;
-use App\Enums\OrderStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -89,17 +88,16 @@ class Batch extends Model
 
     /**
      * Seats already taken: a course sale (order_items.status = active) under an order that is
-     * still live - pending (and not yet expired), partially paid, or paid. A cancelled/expired
-     * order, or one still pending past its expires_at, frees the seat again. There's no separate
-     * enrollment table yet (Checkout is phase 1 of the sales pipeline), so this IS the count -
-     * see CheckoutService, which creates these rows.
+     * still live - see Order::scopeLive(). A cancelled/expired order, or a pending one past its
+     * expires_at with no proof awaiting review, frees the seat again. A pending order whose proof
+     * is still in the admin queue keeps its seat even past expires_at, so the seat can't be sold
+     * to someone else and then the first payment verified too.
      */
     public function seatsTaken(): int
     {
         return OrderItem::where('batch_list_id', $this->id)
             ->where('status', OrderItemStatus::Active)
-            ->whereHas('order', fn (Builder $q) => $q->whereIn('status', [OrderStatus::Pending, OrderStatus::PartiallyPaid, OrderStatus::Paid])
-                ->where(fn (Builder $q2) => $q2->where('status', '!=', OrderStatus::Pending)->orWhere('expires_at', '>', now())))
+            ->whereHas('order', fn(Builder $q) => $q->live())
             ->count();
     }
 
