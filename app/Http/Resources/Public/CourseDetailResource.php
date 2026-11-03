@@ -59,7 +59,7 @@ class CourseDetailResource extends JsonResource
                         ->map(fn ($i) => [
                             'name' => $i->content->name,
                             'thumbnail' => $i->content->thumbnail_url,
-                            'url' => $i->content->file_url,
+                            'url' => $i->content->previewUrl(), // a private upload gets a 2-hour signed link
                         ])->values(),
                 ])->values(),
             ])->values(),

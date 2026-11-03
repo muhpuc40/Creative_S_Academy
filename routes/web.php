@@ -2,9 +2,17 @@
 
 use App\Http\Controllers\Admin\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\ContentFileController;
 use App\Http\Middleware\EnsureAdminIsActive;
 use App\Http\Middleware\LockAdminLoginChallenge;
 use Illuminate\Support\Facades\Route;
+
+// A free preview video for the public course page. Only works with the temporary signed
+// link the course API hands out (CourseContent::previewUrl()), and only until it expires.
+Route::get('media/content/{content}', ContentFileController::class)
+    ->whereNumber('content')
+    ->middleware(['signed', 'throttle:120,1'])
+    ->name('content.preview');
 
 Route::middleware('guest')->group(function () {
     // Admin login: 1. password  2. send code  3. verify code

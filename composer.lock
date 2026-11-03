@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b900e653475e2ebfbfb5fb669e0ee4ae",
+    "content-hash": "2a2bfcce54d216ca77f44fc35c558cab",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -3334,6 +3334,82 @@
                 }
             ],
             "time": "2026-09-29T19:21:12+00:00"
+        },
+        {
+            "name": "muhpuc40/chunkit",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/muhpuc40/chunkit.git",
+                "reference": "75789e1b130af95ad161aa55d2e0e6542ec73709"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/muhpuc40/chunkit/zipball/75789e1b130af95ad161aa55d2e0e6542ec73709",
+                "reference": "75789e1b130af95ad161aa55d2e0e6542ec73709",
+                "shasum": ""
+            },
+            "require": {
+                "ext-fileinfo": "*",
+                "illuminate/bus": "^11.0|^12.0",
+                "illuminate/cache": "^11.0|^12.0",
+                "illuminate/console": "^11.0|^12.0",
+                "illuminate/contracts": "^11.0|^12.0",
+                "illuminate/database": "^11.0|^12.0",
+                "illuminate/filesystem": "^11.0|^12.0",
+                "illuminate/http": "^11.0|^12.0",
+                "illuminate/queue": "^11.0|^12.0",
+                "illuminate/routing": "^11.0|^12.0",
+                "illuminate/support": "^11.0|^12.0",
+                "illuminate/validation": "^11.0|^12.0",
+                "laravel/framework": "^11.0|^12.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.18",
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest": "^3.7",
+                "pestphp/pest-plugin-laravel": "^3.1",
+                "phpunit/phpunit": "^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Muhpuc40\\Chunkit\\ChunkitServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Muhpuc40\\Chunkit\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Minhaj",
+                    "homepage": "https://github.com/muhpuc40"
+                }
+            ],
+            "description": "Chunked, resumable, server-authoritative file uploads for Laravel 11/12 with a queued merge and zero extra infrastructure.",
+            "homepage": "https://github.com/muhpuc40/chunkit",
+            "keywords": [
+                "chunked",
+                "file-upload",
+                "laravel",
+                "resumable",
+                "upload"
+            ],
+            "support": {
+                "issues": "https://github.com/muhpuc40/chunkit/issues",
+                "source": "https://github.com/muhpuc40/chunkit"
+            },
+            "time": "2026-11-03T17:57:18+00:00"
         },
         {
             "name": "nesbot/carbon",

@@ -16,6 +16,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "^3.1",
+        "muhpuc40/chunkit": "^0.1.0",
         "php-ffmpeg/php-ffmpeg": "^1.4",
         "simplesoftwareio/simple-qrcode": "^4.2"
     },

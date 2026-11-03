@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\Course\CoursePaymentRuleController;
 use App\Http\Controllers\Admin\Course\CoursePriceController;
 use App\Http\Controllers\Admin\Course\CourseResourceController;
 use App\Http\Controllers\Admin\Course\CourseReviewController;
+use App\Http\Controllers\ContentFileController;
 use Illuminate\Support\Facades\Route;
 
 // Library pages first: "upload-content" must not be read as a course id.
@@ -21,6 +22,8 @@ Route::get('courses/upload-content', [CourseContentController::class, 'index'])-
 Route::post('courses/upload-content', [CourseContentController::class, 'store'])->name('admin.library.content.store');
 Route::put('courses/upload-content/{content}', [CourseContentController::class, 'update'])->name('admin.library.content.update');
 Route::delete('courses/upload-content/{content}', [CourseContentController::class, 'destroy'])->name('admin.library.content.destroy');
+// Opens/plays a privately stored content file (admins only).
+Route::get('courses/upload-content/{content}/file', ContentFileController::class)->whereNumber('content')->name('admin.library.content.file');
 
 Route::get('courses/upload-resource', [CourseResourceController::class, 'index'])->name('admin.library.resources.index');
 Route::post('courses/upload-resource', [CourseResourceController::class, 'store'])->name('admin.library.resources.store');

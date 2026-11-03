@@ -7,12 +7,21 @@ use App\Models\CourseContent;
 use App\Support\Media;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Muhpuc40\Chunkit\Models\ChunkedUpload;
 
 /**
  * GET /courses/upload-content
  * The content library: what a class / exam / assignment shows (video, file ...).
  * One content can be used by many module items.
+ *
+ * Files (up to 2 GiB) are uploaded in chunks by the browser straight to chunkit
+ * (/chunkit/...). The form then only sends the finished upload's id
+ * (chunkit_upload_id); this controller moves that file to the content's own
+ * private folder. A link can be pasted instead of a file.
  */
 class CourseContentController extends Controller
 {
@@ -31,11 +40,17 @@ class CourseContentController extends Controller
             $data['thumbnail'] = Media::store($request->file('thumbnail'), 'content-thumbnails');
         }
 
-        if ($request->hasFile('file')) {
-            $data['url'] = Media::store($request->file('file'), 'course-content');
-        }
+        DB::transaction(function () use ($data) {
+            $content = CourseContent::create([
+                'name' => $data['name'],
+                'thumbnail' => $data['thumbnail'] ?? null,
+                'url' => $data['chunkit_upload_id'] ? null : $data['url'],
+            ]);
 
-        CourseContent::create($data);
+            if ($data['chunkit_upload_id']) {
+                $this->attachUpload($content, $data['chunkit_upload_id']);
+            }
+        });
 
         return back()->with('success', 'Content saved.');
     }
@@ -43,22 +58,31 @@ class CourseContentController extends Controller
     public function update(Request $request, CourseContent $content): RedirectResponse
     {
         $data = $this->validated($request, false);
+        $changes = ['name' => $data['name']];
 
         if ($request->hasFile('thumbnail')) {
             Media::delete($content->thumbnail);
-            $data['thumbnail'] = Media::store($request->file('thumbnail'), 'content-thumbnails');
+            $changes['thumbnail'] = Media::store($request->file('thumbnail'), 'content-thumbnails');
         }
 
-        if ($request->hasFile('file')) {
-            Media::delete($content->url);
-            $data['url'] = Media::store($request->file('file'), 'course-content');
-        } elseif (! empty($data['url']) && $data['url'] !== $content->url) {
-            Media::delete($content->url);       // replaced by a link
-        } else {
-            unset($data['url']);                // keep what is there
-        }
+        DB::transaction(function () use ($data, $content, $changes) {
+            if ($data['chunkit_upload_id']) {
+                // A new file replaces whatever was there. attachUpload() empties the
+                // content's private folder first; an old public-disk file goes too.
+                Media::delete($content->url);
+                $this->attachUpload($content, $data['chunkit_upload_id']);
+                $changes['url'] = null;
+            } elseif (! empty($data['url']) && $data['url'] !== $content->url) {
+                // A link replaces whatever was there.
+                Media::delete($content->url);
+                $this->deletePrivateFile($content);
+                $changes += ['url' => $data['url'], 'file_disk' => null, 'file_path' => null,
+                    'file_name' => null, 'file_size' => null, 'file_mime' => null];
+            }
+            // Neither given: keep the current file / link.
 
-        $content->update($data);
+            $content->update($changes);
+        });
 
         return back()->with('success', 'Content updated.');
     }
@@ -71,9 +95,59 @@ class CourseContentController extends Controller
 
         Media::delete($content->thumbnail);
         Media::delete($content->url);
+        $this->deletePrivateFile($content);
         $content->delete();
 
         return back()->with('success', 'Content deleted.');
+    }
+
+    /**
+     * Takes a finished chunkit upload and makes it this content's file: moves it into the
+     * content's private folder, records name/size/real type, and deletes the upload row so
+     * the same upload id can never be attached twice.
+     */
+    private function attachUpload(CourseContent $content, string $uploadId): void
+    {
+        /** @var ChunkedUpload|null $upload */
+        $upload = ChunkedUpload::where('upload_id', $uploadId)->lockForUpdate()->first();
+
+        if (! $upload || $upload->status !== ChunkedUpload::STATUS_COMPLETED || ! $upload->destination_path) {
+            throw ValidationException::withMessages([
+                'chunkit_upload_id' => 'The uploaded file is not ready yet, or was already used. Upload it again.',
+            ]);
+        }
+
+        $disk = config('chunkit.final_disk');
+        $storage = Storage::disk($disk);
+
+        if (! $storage->exists($upload->destination_path)) {
+            throw ValidationException::withMessages([
+                'chunkit_upload_id' => 'The uploaded file could not be found. Upload it again.',
+            ]);
+        }
+
+        $target = $content->storageDirectory().'/'.basename($upload->destination_path);
+        $storage->deleteDirectory($content->storageDirectory()); // a replaced file goes away
+        $storage->move($upload->destination_path, $target);
+        $storage->deleteDirectory(dirname($upload->destination_path)); // the now-empty chunkit-done/{uuid}
+
+        $content->forceFill([
+            'file_disk' => $disk,
+            'file_path' => $target,
+            'file_name' => $upload->original_name,
+            'file_size' => $upload->total_bytes,
+            'file_mime' => $storage->mimeType($target) ?: null, // the real type, not what the browser claimed
+        ])->save();
+
+        $upload->delete();
+    }
+
+    /** Removes the content's private folder (its uploaded file), if it has one. */
+    private function deletePrivateFile(CourseContent $content): void
+    {
+        if ($content->hasStoredFile()) {
+            Storage::disk($content->file_disk)->deleteDirectory($content->storageDirectory());
+        }
     }
 
     private function validated(Request $request, bool $creating): array
@@ -81,11 +155,12 @@ class CourseContentController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'thumbnail' => ['nullable', 'image', 'max:2048'],
-            // a link OR an uploaded file
-            'url' => [$creating ? 'required_without:file' : 'nullable', 'nullable', 'string', 'max:2048'],
-            'file' => ['nullable', 'file', 'max:51200', 'mimes:mp4,webm,mov,mkv,pdf'],
+            // a finished chunkit upload OR a link
+            'chunkit_upload_id' => [$creating ? 'required_without:url' : 'nullable', 'nullable', 'uuid'],
+            'url' => [$creating ? 'required_without:chunkit_upload_id' : 'nullable', 'nullable', 'url', 'max:2048'],
         ], [
-            'url.required_without' => 'Paste a link or choose a file.',
-        ]) + ['url' => null];
+            'url.required_without' => 'Upload a file or paste a link.',
+            'chunkit_upload_id.required_without' => 'Upload a file or paste a link.',
+        ]) + ['url' => null, 'chunkit_upload_id' => null];
     }
 }

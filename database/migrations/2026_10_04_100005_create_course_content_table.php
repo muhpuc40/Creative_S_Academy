@@ -12,7 +12,13 @@ return new class extends Migration {
             $table->id();
             $table->string('name');
             $table->string('thumbnail')->nullable();
-            $table->string('url')->nullable();
+            $table->string('url')->nullable();                           // an external link (or an old file on the public disk)
+            // An uploaded file (chunkit, admin only) lives on a PRIVATE disk - never a public URL.
+            $table->string('file_disk', 30)->nullable();                 // "local" = storage/app/private
+            $table->string('file_path', 1024)->nullable();               // course-content/{id}/{name}
+            $table->string('file_name')->nullable();                     // original name, for display
+            $table->unsignedBigInteger('file_size')->nullable();         // bytes
+            $table->string('file_mime', 100)->nullable();                // real type, read from the file itself
             $table->timestamps();
         });
     }
