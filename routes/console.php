@@ -11,11 +11,16 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 /*
- * Chunked uploads (muhpuc40/chunkit). Both need the scheduler's single cron entry on the
- * server:  * * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1
+ * Scheduled jobs. They only run if the scheduler runs:
+ *   server (cron):  * * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1
+ *   local (XAMPP):  php artisan schedule:work   (keep it open in a terminal)
  */
 
-// Deletes unfinished uploads older than chunkit.ttl_hours (24h), with their chunks.
+// Expires unpaid orders whose 24h payment window has passed (frees seats + vouchers).
+// The one place orders expire - see App\Console\Commands\ExpireUnpaidOrders.
+Schedule::command('orders:expire')->everyFiveMinutes()->withoutOverlapping();
+
+// Chunked uploads (muhpuc40/chunkit): deletes unfinished uploads older than chunkit.ttl_hours (24h), with their chunks.
 Schedule::command('chunkit:prune')->dailyAt('03:00');
 
 // A finished upload that was never saved to a content (the admin closed the form) is not

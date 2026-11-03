@@ -7,7 +7,6 @@ use App\Enums\InstallmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentPlan;
-use App\Enums\PaymentStatus;
 use App\Enums\VoucherStatus;
 use App\Models\AffiliateAttribution;
 use App\Models\Batch;
@@ -33,12 +32,7 @@ class CheckoutService
     {
     }
 
-    /**
-     * Read-only price preview. Nothing is written to the database - a student's own stale,
-     * abandoned order is simply treated as not blocking (see the "owned" check in compute()),
-     * the same way checkout() will treat it once it actually runs. The real cleanup (flipping
-     * that order to Expired, freeing its voucher) only happens inside checkout()'s transaction.
-     */
+    /** Read-only price preview. Nothing is written to the database. */
     public function quote(Student $student, ?int $comboId, array $items, ?string $voucherCode): array
     {
         return $this->present($this->compute($student, $comboId, $items, $voucherCode, lock: false));
@@ -48,42 +42,10 @@ class CheckoutService
     public function checkout(Student $student, ?int $comboId, array $items, ?string $voucherCode): Order
     {
         return DB::transaction(function () use ($student, $comboId, $items, $voucherCode) {
-            $this->releaseExpiredOrders($student);
-
             $priced = $this->compute($student, $comboId, $items, $voucherCode, lock: true);
 
             return $this->persist($student, $priced);
         });
-    }
-
-    /**
-     * Lazy cleanup, run at the top of every checkout() - there's no scheduler in this app, so a
-     * stale order is only ever noticed (and only ever needs to be noticed) the next time this
-     * same student tries to buy something. Flips this student's own Pending orders whose
-     * expires_at has passed to Expired and frees any voucher they were holding, UNLESS the order
-     * still has a payment awaiting admin review - that student clearly intends to complete the
-     * purchase, so a slow admin queue must never silently cancel it out from under them.
-     */
-    private function releaseExpiredOrders(Student $student): void
-    {
-        $stale = Order::where('student_id', $student->id)
-            ->where('status', OrderStatus::Pending)
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now())
-            ->whereDoesntHave('payments', fn ($q) => $q->where('status', PaymentStatus::Pending))
-            ->lockForUpdate()
-            ->get();
-
-        foreach ($stale as $order) {
-            $order->update(['status' => OrderStatus::Expired]);
-
-            if ($order->payment_voucher_id) {
-                PaymentVoucher::where('id', $order->payment_voucher_id)
-                    ->where('status', VoucherStatus::Used)
-                    ->lockForUpdate()
-                    ->update(['status' => VoucherStatus::Active, 'used_at' => null]);
-            }
-        }
     }
 
     /**
@@ -122,9 +84,9 @@ class CheckoutService
             throw ValidationException::withMessages(['items' => 'One or more selected batches do not exist.']);
         }
 
-        // Already has a live order for one of these courses? Order::scopeLive() is the same rule
-        // checkout() applies for real (releaseExpiredOrders() runs before this) and the same one
-        // Batch::seatsTaken() uses, so quote() never promises something checkout() wouldn't allow.
+        // Already has a live order (pending / partially paid / paid) for one of these courses?
+        // Same rule Batch::seatsTaken() uses. An unpaid order stops counting once the scheduled
+        // `orders:expire` command has expired it.
         $owned = OrderItem::where('status', OrderItemStatus::Active)
             ->whereIn('course_list_id', $courseIds)
             ->whereHas('order', fn($q) => $q->where('student_id', $student->id)->live())

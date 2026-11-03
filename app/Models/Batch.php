@@ -10,7 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-/** One run of a course, for example "Full Stack - Batch 12". */
+/**
+ * One run of a course, for example "Full Stack - Batch 12".
+ *
+ * @property int|null $seat_limit null = unlimited seats (the integer cast keeps null as null)
+ */
 class Batch extends Model
 {
     use SoftDeletes;
@@ -87,11 +91,9 @@ class Batch extends Model
     }
 
     /**
-     * Seats already taken: a course sale (order_items.status = active) under an order that is
-     * still live - see Order::scopeLive(). A cancelled/expired order, or a pending one past its
-     * expires_at with no proof awaiting review, frees the seat again. A pending order whose proof
-     * is still in the admin queue keeps its seat even past expires_at, so the seat can't be sold
-     * to someone else and then the first payment verified too.
+     * Seats already taken: a course sale (order_items.status = active) under a live order -
+     * pending, partially paid or paid (Order::scopeLive()). An expired or cancelled order frees
+     * its seat; unpaid orders are expired by the scheduled `orders:expire` command.
      */
     public function seatsTaken(): int
     {

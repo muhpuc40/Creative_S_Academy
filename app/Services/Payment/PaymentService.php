@@ -42,14 +42,12 @@ class PaymentService
             if (!$order) {
                 throw ValidationException::withMessages(['order_id' => 'Order not found.']);
             }
+            // Expiry is the scheduled `orders:expire` command's job; here the status says it all.
+            if ($order->status === OrderStatus::Expired) {
+                throw ValidationException::withMessages(['order_id' => 'This order has expired. Please checkout again.']);
+            }
             if (!in_array($order->status, [OrderStatus::Pending, OrderStatus::PartiallyPaid], true)) {
                 throw ValidationException::withMessages(['order_id' => 'This order has nothing left to pay, or is no longer payable.']);
-            }
-            // Only an order nobody has paid anything on yet can expire. Once a payment is verified
-            // (partially_paid) the student must be able to pay later installments whenever they
-            // fall due - weeks after checkout - so the 24h window no longer applies.
-            if ($order->status === OrderStatus::Pending && $order->expires_at && $order->expires_at->isPast()) {
-                throw ValidationException::withMessages(['order_id' => 'This order has expired. Please checkout again.']);
             }
 
             /** @var \Illuminate\Database\Eloquent\Collection<int, OrderItemInstallment> $installments */
@@ -141,7 +139,8 @@ class PaymentService
             $order->update([
                 'paid_amount' => $newPaidAmount,
                 'status' => $newStatus,
-                // Real money is in: this order is kept for good, it never expires from here on.
+                // Real money is in: the order is kept for good. orders:expire only looks at pending
+                // orders anyway; clearing this just stops the API showing a stale "pay before" time.
                 'expires_at' => null,
                 'completed_at' => $newStatus === OrderStatus::Paid ? ($order->completed_at ?? now()) : $order->completed_at,
             ]);
@@ -183,8 +182,9 @@ class PaymentService
             ]);
 
             // The proof may have sat in the admin queue past the order's 24h window. A student who
-            // genuinely paid (and only mistyped the TrxID, say) gets a fresh window to resubmit
-            // instead of being told the order expired and having to check out all over again.
+            // genuinely paid (and only mistyped the TrxID, say) gets a fresh window to resubmit -
+            // otherwise orders:expire would expire the order on its next run (no proof is waiting
+            // any more) and they'd have to check out all over again.
             $order = Order::lockForUpdate()->find($payment->order_list_id);
             if ($order && $order->status === OrderStatus::Pending && $order->expires_at && $order->expires_at->isPast()) {
                 $order->update(['expires_at' => now()->addHours(Order::PAYMENT_WINDOW_HOURS)]);
