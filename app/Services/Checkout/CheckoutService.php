@@ -7,6 +7,7 @@ use App\Enums\InstallmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentPlan;
+use App\Enums\PaymentStatus;
 use App\Enums\VoucherStatus;
 use App\Models\AffiliateAttribution;
 use App\Models\Batch;
@@ -17,6 +18,7 @@ use App\Models\OrderItem;
 use App\Models\PaymentCombo;
 use App\Models\PaymentVoucher;
 use App\Models\Student;
+use App\Services\Enrollment\EnrollmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -30,7 +32,16 @@ class CheckoutService
     /** An unpaid order is cancelled this long after it's created (frees the seat and the voucher). */
     private const ORDER_EXPIRES_HOURS = 24;
 
-    /** Read-only price preview. Nothing is written to the database. */
+    public function __construct(private readonly EnrollmentService $enrollment)
+    {
+    }
+
+    /**
+     * Read-only price preview. Nothing is written to the database - a student's own stale,
+     * abandoned order is simply treated as not blocking (see the "owned" check in compute()),
+     * the same way checkout() will treat it once it actually runs. The real cleanup (flipping
+     * that order to Expired, freeing its voucher) only happens inside checkout()'s transaction.
+     */
     public function quote(Student $student, ?int $comboId, array $items, ?string $voucherCode): array
     {
         return $this->present($this->compute($student, $comboId, $items, $voucherCode, lock: false));
@@ -40,10 +51,42 @@ class CheckoutService
     public function checkout(Student $student, ?int $comboId, array $items, ?string $voucherCode): Order
     {
         return DB::transaction(function () use ($student, $comboId, $items, $voucherCode) {
+            $this->releaseExpiredOrders($student);
+
             $priced = $this->compute($student, $comboId, $items, $voucherCode, lock: true);
 
             return $this->persist($student, $priced);
         });
+    }
+
+    /**
+     * Lazy cleanup, run at the top of every checkout() - there's no scheduler in this app, so a
+     * stale order is only ever noticed (and only ever needs to be noticed) the next time this
+     * same student tries to buy something. Flips this student's own Pending orders whose
+     * expires_at has passed to Expired and frees any voucher they were holding, UNLESS the order
+     * still has a payment awaiting admin review - that student clearly intends to complete the
+     * purchase, so a slow admin queue must never silently cancel it out from under them.
+     */
+    private function releaseExpiredOrders(Student $student): void
+    {
+        $stale = Order::where('student_id', $student->id)
+            ->where('status', OrderStatus::Pending)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now())
+            ->whereDoesntHave('payments', fn ($q) => $q->where('status', PaymentStatus::Pending))
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($stale as $order) {
+            $order->update(['status' => OrderStatus::Expired]);
+
+            if ($order->payment_voucher_id) {
+                PaymentVoucher::where('id', $order->payment_voucher_id)
+                    ->where('status', VoucherStatus::Used)
+                    ->lockForUpdate()
+                    ->update(['status' => VoucherStatus::Active, 'used_at' => null]);
+            }
+        }
     }
 
     /**
@@ -82,11 +125,25 @@ class CheckoutService
             throw ValidationException::withMessages(['items' => 'One or more selected batches do not exist.']);
         }
 
-        // Already has a live (pending/partially paid/paid) order for one of these courses?
+        // Already has a live order for one of these courses? A Pending order whose expires_at
+        // has passed doesn't count UNLESS it still has a payment awaiting admin review - this
+        // mirrors exactly what checkout() does for real (releaseExpiredOrders(), called before
+        // this method), so quote() never promises something checkout() wouldn't actually allow,
+        // even though quote() itself writes nothing.
         $owned = OrderItem::where('status', OrderItemStatus::Active)
             ->whereIn('course_list_id', $courseIds)
             ->whereHas('order', fn($q) => $q->where('student_id', $student->id)
-                ->whereIn('status', [OrderStatus::Pending, OrderStatus::PartiallyPaid, OrderStatus::Paid]))
+                ->where(function ($q2) {
+                    $q2->whereIn('status', [OrderStatus::PartiallyPaid, OrderStatus::Paid])
+                        ->orWhere(function ($q3) {
+                            $q3->where('status', OrderStatus::Pending)
+                                ->where(function ($q4) {
+                                    $q4->whereNull('expires_at')
+                                        ->orWhere('expires_at', '>', now())
+                                        ->orWhereHas('payments', fn($p) => $p->where('status', PaymentStatus::Pending));
+                                });
+                        });
+                }))
             ->first();
         if ($owned) {
             $title = $courses[$owned->course_list_id]->title ?? 'a selected course';
@@ -290,6 +347,15 @@ class CheckoutService
                     'status' => $isFree ? InstallmentStatus::Paid : InstallmentStatus::Unpaid,
                     'paid_at' => $isFree ? now() : null,
                 ]);
+            }
+
+            // A free item (voucher covered 100%) is born with every installment already paid -
+            // that's exactly the state PaymentService::verify() would leave it in, so it gets
+            // enrolled and (if this order carries an attribution) its affiliate conversion made
+            // the same way, via the same shared service. Otherwise this item just sits Unpaid
+            // until a real payment is verified, same as always.
+            if ($isFree) {
+                $this->enrollment->syncItemState($orderItem->load('installments'), $order);
             }
         }
 

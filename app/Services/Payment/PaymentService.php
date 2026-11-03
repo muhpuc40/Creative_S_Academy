@@ -2,25 +2,16 @@
 
 namespace App\Services\Payment;
 
-use App\Enums\AmountType;
-use App\Enums\AttributionStatus;
-use App\Enums\CommissionStatus;
-use App\Enums\ConversionStatus;
-use App\Enums\EnrollmentStatus;
 use App\Enums\InstallmentStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Admin;
-use App\Models\AffiliateAttribution;
-use App\Models\AffiliateCommission;
-use App\Models\AffiliateConversion;
-use App\Models\AffiliateSetting;
-use App\Models\Enrollment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemInstallment;
 use App\Models\Payment;
 use App\Models\Student;
+use App\Services\Enrollment\EnrollmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -29,11 +20,16 @@ use Illuminate\Validation\ValidationException;
  * different courses in the same order, as one bKash/Nagad/bank transfer - the student (or the
  * frontend) selects which dues this payment covers, the amount must match them exactly, and
  * everything else (enrollment, module access, affiliate conversion) falls out of which specific
- * installment rows end up "paid", not of the order as a whole. See each private method's comment
- * for where a given piece of the master plan is implemented.
+ * installment rows end up "paid", not of the order as a whole - see EnrollmentService, which this
+ * class shares with CheckoutService (a 100%-discounted order reaches the same paid-installment
+ * state without ever going through here, so that logic can't live only in this class).
  */
 class PaymentService
 {
+    public function __construct(private readonly EnrollmentService $enrollment)
+    {
+    }
+
     /**
      * Student submits proof of a payment. Reserves the selected dues (unpaid -> pending) against
      * this one payment_list row so they can't also be claimed by a second submission while this
@@ -48,6 +44,9 @@ class PaymentService
             }
             if (!in_array($order->status, [OrderStatus::Pending, OrderStatus::PartiallyPaid], true)) {
                 throw ValidationException::withMessages(['order_id' => 'This order has nothing left to pay, or is no longer payable.']);
+            }
+            if ($order->expires_at && $order->expires_at->isPast()) {
+                throw ValidationException::withMessages(['order_id' => 'This order has expired. Please checkout again.']);
             }
 
             /** @var \Illuminate\Database\Eloquent\Collection<int, OrderItemInstallment> $installments */
@@ -146,7 +145,7 @@ class PaymentService
             foreach ($itemIds as $itemId) {
                 $item = OrderItem::with('installments')->find($itemId);
                 if ($item) {
-                    $this->syncItemState($item, $order);
+                    $this->enrollment->syncItemState($item, $order);
                 }
             }
 
@@ -180,114 +179,5 @@ class PaymentService
 
             return $payment->fresh(['installments.item.course', 'order']);
         });
-    }
-
-    /**
-     * Master-plan core: what one course's payment state means, independent of every other
-     * course in the same order.
-     *   - As soon as this item has at least one paid installment, it's enrolled (one row in
-     *     enrolled_user_list, per order_item - module access then follows purely from
-     *     OrderItem::canAccessModule(), which looks at THIS item's own installments).
-     *   - The FIRST time it gets enrolled, an affiliate_conversions row (+ a "pending" commission)
-     *     is made, if this order carries an attribution - "made when the enrollment is created",
-     *     per that table's own comment.
-     *   - Once every installment for this item is paid, its commission (if any) is released from
-     *     "pending" to "available" - see available_at's own comment on why this isn't the same
-     *     moment as enrollment for an installment-plan course.
-     */
-    private function syncItemState(OrderItem $item, Order $order): void
-    {
-        $allPaid = $item->installments->isNotEmpty()
-            && $item->installments->every(fn (OrderItemInstallment $i) => $i->status === InstallmentStatus::Paid);
-        $anyPaid = $item->installments->contains(fn (OrderItemInstallment $i) => $i->status === InstallmentStatus::Paid);
-
-        if ($anyPaid) {
-            $alreadyEnrolled = Enrollment::where('order_item_id', $item->id)->exists();
-
-            if (!$alreadyEnrolled) {
-                Enrollment::create([
-                    'student_id' => $order->student_id,
-                    'order_item_id' => $item->id,
-                    'course_list_id' => $item->course_list_id,
-                    'batch_list_id' => $item->batch_list_id,
-                    'status' => EnrollmentStatus::Active,
-                    'enrolled_at' => now(),
-                ]);
-
-                $this->createAffiliateConversion($item, $order);
-            }
-        }
-
-        if ($allPaid) {
-            $this->releaseCommission($item);
-        }
-    }
-
-    /** One row per order_item, made once, the moment it's first enrolled. */
-    private function createAffiliateConversion(OrderItem $item, Order $order): void
-    {
-        if (!$order->affiliate_attribution_id) {
-            return;
-        }
-
-        $attribution = AffiliateAttribution::find($order->affiliate_attribution_id);
-        if (!$attribution) {
-            return;
-        }
-
-        $settings = AffiliateSetting::current();
-
-        $conversion = AffiliateConversion::create([
-            'affiliate_id' => $attribution->affiliate_id,
-            'affiliate_attribution_id' => $attribution->id,
-            'order_list_id' => $order->id,
-            'order_item_id' => $item->id,
-            'student_id' => $order->student_id,
-            'sale_amount' => $item->net_price,
-            'status' => ConversionStatus::Confirmed,
-            'converted_at' => now(),
-        ]);
-
-        $commissionAmount = $settings->commission_type === AmountType::Percent
-            ? round((float) $item->net_price * (float) $settings->commission_value / 100, 2)
-            : min((float) $settings->commission_value, (float) $item->net_price);
-
-        AffiliateCommission::create([
-            'affiliate_id' => $attribution->affiliate_id,
-            'affiliate_conversion_id' => $conversion->id,
-            'rate_type' => $settings->commission_type,
-            'rate_value' => $settings->commission_value,
-            'base_amount' => $item->net_price,
-            'amount' => $commissionAmount,
-            'status' => CommissionStatus::Pending,
-        ]);
-
-        if ($attribution->status !== AttributionStatus::Converted) {
-            $attribution->update(['status' => AttributionStatus::Converted]);
-        }
-    }
-
-    /**
-     * Flips a "pending" commission to "available" once its course is fully paid. available_at is
-     * set to now + hold_days: the commission is credited now, but a future Payout API is where
-     * admin would actually filter on available_at having passed before paying it out.
-     */
-    private function releaseCommission(OrderItem $item): void
-    {
-        $conversion = AffiliateConversion::where('order_item_id', $item->id)->first();
-        if (!$conversion) {
-            return;
-        }
-
-        $commission = AffiliateCommission::where('affiliate_conversion_id', $conversion->id)->first();
-        if (!$commission || $commission->status !== CommissionStatus::Pending) {
-            return;
-        }
-
-        $holdDays = (int) AffiliateSetting::current()->hold_days;
-        $commission->update([
-            'status' => CommissionStatus::Available,
-            'available_at' => now()->addDays($holdDays),
-        ]);
     }
 }
