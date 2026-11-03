@@ -71,7 +71,7 @@ class SmsComposerController extends Controller
 
         try {
             Bus::batch($jobs)
-                ->name('SifatFlow quick SMS: ' . $recipientType)
+                ->name('CreativeSacademy quick SMS: ' . $recipientType)
                 ->finally(function (Batch $batch) use ($adminId, $recipientType, $numbers, $message) {
                     Log::channel('app_file')->info('SMS batch finished', [
                         'admin_id' => $adminId,
