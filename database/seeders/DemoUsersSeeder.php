@@ -14,12 +14,12 @@ use Illuminate\Support\Facades\Hash;
 /**
  * Test accounts for local development (all fake). Password for all: Password@123
  *
- *   admin@sifatflow.com
- *   instructor1..5@sifatflow.com
- *   student1..24@sifatflow.com
+ *   admin@csa.com
+ *   instructor1..5@csa.com
+ *   student1..24@csa.com
  *     student1  = normal, verified            student3 = suspended
  *     student4  = NOT verified yet            student24 = deleted (soft)
- *   affiliate1..7@sifatflow.com
+ *   affiliate1..7@csa.com
  *     affiliate1,2 = approved (ref link works)   affiliate3 = pending
  *     affiliate4   = pending + NOT verified      affiliate5 = rejected
  *     affiliate6   = program suspended           affiliate7 = ACCOUNT suspended (cannot log in)
@@ -32,17 +32,17 @@ class DemoUsersSeeder extends Seeder
             $password = Hash::make('Password@123');   // hashed once, so seeding stays fast
             $verified = ['password' => $password, 'verified_at' => now(), 'verified_channel' => 'email'];
 
-            $superAdmin = Admin::firstOrCreate(['email' => 'admin@sifatflow.com'], $verified + [
+            $superAdmin = Admin::firstOrCreate(['email' => 'admin@csa.com'], $verified + [
                 'name' => 'Super Admin',
                 'phone' => '01700000000',
                 'status' => 'active',
             ]);
-            Admin::firstOrCreate(['email' => 'admin1@sifatflow.com'], $verified + [
+            Admin::firstOrCreate(['email' => 'admin1@csa.com'], $verified + [
                 'name' => 'Admin 1',
                 'phone' => '01700000002',
                 'status' => 'active',
             ]);
-            Admin::firstOrCreate(['email' => 'admin2@sifatflow.com'], $verified + [
+            Admin::firstOrCreate(['email' => 'admin2@csa.com'], $verified + [
                 'name' => 'Admin 2',
                 'phone' => '01700000003',
                 'status' => 'active',
@@ -76,7 +76,7 @@ class DemoUsersSeeder extends Seeder
             ];
             foreach ($instructors as $i => [$name, $designation, $bio]) {
                 $n = $i + 1;
-                Instructor::firstOrCreate(['email' => "instructor{$n}@sifatflow.com"], $verified + [
+                Instructor::firstOrCreate(['email' => "instructor{$n}@csa.com"], $verified + [
                     'name' => $name,
                     'phone' => '017000001' . sprintf('%02d', $n),
                     'designation' => $designation,
@@ -113,7 +113,7 @@ class DemoUsersSeeder extends Seeder
             ];
             foreach ($names as $i => $name) {
                 $n = $i + 1;
-                $student = Student::firstOrCreate(['email' => "student{$n}@sifatflow.com"], [
+                $student = Student::firstOrCreate(['email' => "student{$n}@csa.com"], [
                     'name' => $name,
                     'phone' => '017000002' . sprintf('%02d', $n),
                     'password' => $password,
@@ -142,7 +142,7 @@ class DemoUsersSeeder extends Seeder
             ];
             foreach ($affiliates as $i => [$name, $program, $account, $isVerified]) {
                 $n = $i + 1;
-                $affiliate = Affiliate::firstOrCreate(['email' => "affiliate{$n}@sifatflow.com"], [
+                $affiliate = Affiliate::firstOrCreate(['email' => "affiliate{$n}@csa.com"], [
                     'name' => $name,
                     'phone' => '017000003' . sprintf('%02d', $n),
                     'password' => $password,

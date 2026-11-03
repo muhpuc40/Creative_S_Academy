@@ -157,7 +157,7 @@
         <x-admin.card title="Message">
             <div class="space-y-5">
                 <x-admin.input name="subject" label="Subject" :value="old('subject')"
-                    placeholder="Important update from SifatFlow" required />
+                    placeholder="Important update from CreativeSacademy" required />
 
                 <div>
                     <label for="attachment" class="mb-1.5 block text-sm font-medium text-slate-700">Attachment

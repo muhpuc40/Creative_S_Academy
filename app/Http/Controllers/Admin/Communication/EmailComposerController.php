@@ -91,7 +91,7 @@ class EmailComposerController extends Controller
 
         try {
             Bus::batch($jobs)
-                ->name('SifatFlow email: ' . $subject)
+                ->name('CreativeSacademy email: ' . $subject)
                 ->finally(function (Batch $batch) use ($attachmentPath, $adminId, $subject, $recipients, $recipientType, $attachmentName) {
                     if ($attachmentPath) {
                         Storage::disk('local')->delete($attachmentPath);
