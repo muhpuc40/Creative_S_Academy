@@ -18,6 +18,7 @@ return [
 
         ['heading' => 'Sales'],
         ['label' => 'Orders', 'route' => 'admin.orders.index', 'icon' => 'credit-card', 'match' => 'admin.orders.*'],
+        ['label' => 'Payments', 'route' => 'admin.payments.index', 'icon' => 'inbox', 'match' => 'admin.payments.*'],
         ['label' => 'Vouchers', 'route' => 'admin.vouchers.index', 'icon' => 'gift', 'match' => 'admin.vouchers.*'],
         ['label' => 'Combo offers', 'route' => 'admin.combos.index', 'icon' => 'percent', 'match' => 'admin.combos.*'],
 

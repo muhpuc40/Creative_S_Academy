@@ -45,6 +45,7 @@ class PaymentCombo extends Model
         return Attribute::get(fn() => Media::url($this->thumbnail));
     }
 
+    /** @return BelongsToMany<Course, $this> */
     public function courses(): BelongsToMany
     {
         return $this->belongsToMany(Course::class, 'payment_combo_courses', 'payment_combo_id', 'course_list_id')

@@ -3,8 +3,15 @@
 // Loaded from routes/web.php INSIDE the admin group (login + active admin required).
 
 use App\Http\Controllers\Admin\Sales\PaymentComboController;
+use App\Http\Controllers\Admin\Sales\PaymentVerificationController;
 use App\Http\Controllers\Admin\Sales\PaymentVoucherController;
 use Illuminate\Support\Facades\Route;
+
+// Payments: student-submitted proof, awaiting (or already given) admin verification
+Route::get('payments', [PaymentVerificationController::class, 'index'])->name('admin.payments.index');
+Route::get('payments/{payment}', [PaymentVerificationController::class, 'show'])->whereNumber('payment')->name('admin.payments.show');
+Route::patch('payments/{payment}/verify', [PaymentVerificationController::class, 'verify'])->whereNumber('payment')->name('admin.payments.verify');
+Route::patch('payments/{payment}/reject', [PaymentVerificationController::class, 'reject'])->whereNumber('payment')->name('admin.payments.reject');
 
 // Combo offers: several courses sold together
 Route::get('combos', [PaymentComboController::class, 'index'])->name('admin.combos.index');

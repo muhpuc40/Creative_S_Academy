@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BatchStatus;
+use App\Enums\OrderItemStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -85,10 +86,19 @@ class Batch extends Model
         return $dates ? collect($dates)->max() : null;
     }
 
-    /** Seats already taken. TODO Phase 3: count the enrollments of this batch here. */
+    /**
+     * Seats already taken: a course sale (order_items.status = active) under an order that is
+     * still live - see Order::scopeLive(). A cancelled/expired order, or a pending one past its
+     * expires_at with no proof awaiting review, frees the seat again. A pending order whose proof
+     * is still in the admin queue keeps its seat even past expires_at, so the seat can't be sold
+     * to someone else and then the first payment verified too.
+     */
     public function seatsTaken(): int
     {
-        return 0;
+        return OrderItem::where('batch_list_id', $this->id)
+            ->where('status', OrderItemStatus::Active)
+            ->whereHas('order', fn(Builder $q) => $q->live())
+            ->count();
     }
 
     /** Seats still free. null = unlimited. */
