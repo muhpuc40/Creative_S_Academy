@@ -18,7 +18,8 @@ Artisan::command('inspire', function () {
 
 // Expires unpaid orders whose 24h payment window has passed (frees seats + vouchers).
 // The one place orders expire - see App\Console\Commands\ExpireUnpaidOrders.
-Schedule::command('orders:expire')->everyFiveMinutes()->withoutOverlapping();
+// Every 6 hours, so an unpaid order is released 24-30h after checkout.
+Schedule::command('orders:expire')->everySixHours()->withoutOverlapping();
 
 // Chunked uploads (muhpuc40/chunkit): deletes unfinished uploads older than chunkit.ttl_hours (24h), with their chunks.
 Schedule::command('chunkit:prune')->dailyAt('03:00');
