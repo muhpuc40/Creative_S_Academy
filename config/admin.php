@@ -21,6 +21,7 @@ return [
         ['label' => 'Payments', 'route' => 'admin.payments.index', 'icon' => 'inbox', 'match' => 'admin.payments.*'],
         ['label' => 'Vouchers', 'route' => 'admin.vouchers.index', 'icon' => 'gift', 'match' => 'admin.vouchers.*'],
         ['label' => 'Combo offers', 'route' => 'admin.combos.index', 'icon' => 'percent', 'match' => 'admin.combos.*'],
+        ['label' => 'Accounts', 'route' => 'admin.payment-accounts.index', 'icon' => 'wallet', 'match' => 'admin.payment-accounts.*'],
 
         ['heading' => 'Communication'],
         ['label' => 'SMS composer', 'route' => 'admin.communication.sms.create', 'icon' => 'send', 'match' => 'admin.communication.sms.*'],

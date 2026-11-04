@@ -2,6 +2,7 @@
 
 // Loaded from routes/web.php INSIDE the admin group (login + active admin required).
 
+use App\Http\Controllers\Admin\Sales\PaymentAccountController;
 use App\Http\Controllers\Admin\Sales\PaymentComboController;
 use App\Http\Controllers\Admin\Sales\PaymentVerificationController;
 use App\Http\Controllers\Admin\Sales\PaymentVoucherController;
@@ -27,3 +28,10 @@ Route::post('vouchers', [PaymentVoucherController::class, 'store'])->name('admin
 Route::post('vouchers/{voucher}/resend', [PaymentVoucherController::class, 'resend'])->whereNumber('voucher')->name('admin.vouchers.resend');
 Route::patch('vouchers/{voucher}/cancel', [PaymentVoucherController::class, 'cancel'])->whereNumber('voucher')->name('admin.vouchers.cancel');
 Route::delete('vouchers/{voucher}', [PaymentVoucherController::class, 'destroy'])->whereNumber('voucher')->name('admin.vouchers.destroy');
+
+// Accounts: where students send money (bKash/Nagad number, bank account, cash).
+Route::get('payment-accounts', [PaymentAccountController::class, 'index'])->name('admin.payment-accounts.index');
+Route::post('payment-accounts', [PaymentAccountController::class, 'store'])->name('admin.payment-accounts.store');
+Route::put('payment-accounts/{account}', [PaymentAccountController::class, 'update'])->whereNumber('account')->name('admin.payment-accounts.update');
+Route::patch('payment-accounts/{account}/toggle', [PaymentAccountController::class, 'toggle'])->whereNumber('account')->name('admin.payment-accounts.toggle');
+Route::delete('payment-accounts/{account}', [PaymentAccountController::class, 'destroy'])->whereNumber('account')->name('admin.payment-accounts.destroy');

@@ -24,7 +24,8 @@ class PaymentSubmitRequest extends FormRequest
             'installment_ids.*' => ['required', 'integer', 'distinct', 'exists:order_item_installments,id'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'method' => ['required', Rule::enum(PaymentMethod::class)],
-            'payment_account_id' => ['nullable', 'integer', 'exists:payment_accounts,id'],
+            // Only an account currently shown to students (Sales > Accounts).
+            'payment_account_id' => ['nullable', 'integer', Rule::exists('payment_accounts', 'id')->where('is_active', true)],
             'provider' => ['nullable', 'string', 'max:60'],
             'sender_account' => ['nullable', 'string', 'max:60'],
             // A reference the student types in: bKash/Nagad TrxID, or a bank reference number.
