@@ -65,6 +65,8 @@ class PaymentService
                 throw ValidationException::withMessages(['installment_ids' => "\"{$notUnpaid->title}\" is already paid, or already awaiting verification."]);
             }
 
+            $this->assertPaidInOrder($installments);
+
             $expected = round((float) $installments->sum('amount'), 2);
             $submitted = round((float) $data['amount'], 2);
             if (abs($expected - $submitted) > 0.01) {
@@ -103,6 +105,42 @@ class PaymentService
 
             return $payment->load('installments.item.course', 'order');
         });
+    }
+
+    /**
+     * Installments of a course must be paid in order: 1, then 2, then 3 (or several at once,
+     * like 1+2 or 1+2+3) - never 2 or 3 while 1 is still unpaid. One payment can cover several
+     * courses of the same order, so the rule is checked per course (order_item), never by
+     * comparing sequence numbers across courses.
+     *
+     * For each course: every installment BEFORE the highest one selected must be already paid
+     * or selected in this same payment. One that is only "pending" (awaiting admin review) does
+     * not count - if admin rejected it later, a later installment would be paid ahead of it.
+     *
+     * @param  \Illuminate\Database\Eloquent\Collection<int, OrderItemInstallment>  $selected
+     */
+    private function assertPaidInOrder($selected): void
+    {
+        foreach ($selected->groupBy('order_item_id') as $orderItemId => $forCourse) {
+            $firstMissing = OrderItemInstallment::where('order_item_id', $orderItemId)
+                ->where('sequence', '<', $forCourse->max('sequence'))
+                ->whereNotIn('status', [InstallmentStatus::Paid, InstallmentStatus::Cancelled])
+                ->whereNotIn('id', $forCourse->pluck('id'))
+                ->orderBy('sequence')
+                ->lockForUpdate()
+                ->first();
+
+            if ($firstMissing) {
+                $course = $firstMissing->item?->course?->title ?? 'this course';
+                $why = $firstMissing->status === InstallmentStatus::Pending
+                    ? 'it is still waiting for admin verification'
+                    : 'it is not paid yet';
+
+                throw ValidationException::withMessages([
+                    'installment_ids' => "Installments must be paid in order: pay \"{$firstMissing->title}\" of {$course} first ({$why}).",
+                ]);
+            }
+        }
     }
 
     /**

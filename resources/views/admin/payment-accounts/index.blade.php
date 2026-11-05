@@ -6,7 +6,7 @@
 <x-admin.layout title="Payment accounts">
     <div x-data="{ open: false, mode: 'add', action: '', form: {} }" @keydown.escape.window="open = false">
         <x-admin.page-header title="Payment accounts"
-            description="Where students send money. Active accounts are shown to students, in this order, before they submit payment proof.">
+            description="Active accounts are shown to students, in this order, before they submit payment.">
             <x-admin.button type="button"
                 @click="mode = 'add'; action = '{{ route('admin.payment-accounts.store') }}'; form = {{ \Illuminate\Support\Js::from($blank) }}; open = true">
                 <x-admin.icon name="plus" class="size-4" /> Add account
