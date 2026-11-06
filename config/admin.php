@@ -26,6 +26,7 @@ return [
         ['heading' => 'Website'],
         ['label' => 'Hero content', 'route' => 'admin.website.hero.index', 'icon' => 'image', 'match' => 'admin.website.hero.*'],
         ['label' => 'Hero settings', 'route' => 'admin.website.hero-settings.edit', 'icon' => 'sliders', 'match' => 'admin.website.hero-settings.*'],
+        ['label' => 'Popups', 'route' => 'admin.website.popups.index', 'icon' => 'layers', 'match' => 'admin.website.popups.*'],
 
         ['heading' => 'Communication'],
         ['label' => 'SMS composer', 'route' => 'admin.communication.sms.create', 'icon' => 'send', 'match' => 'admin.communication.sms.*'],

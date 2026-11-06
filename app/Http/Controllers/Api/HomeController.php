@@ -23,21 +23,18 @@ class HomeController extends Controller
     {
         $slides = HeroContent::active()->ordered()->get();
 
-        return response()->json(['data' => [
-            'display' => HeroSetting::current(),
-            'hero' => [
-                'slides' => HeroResource::collection($slides)->resolve(),
-            ],
-            'popups' => [
-                'welcome' => null,
-                'promo' => null,
-                'corner' => null,
-            ],
-            'settings' => [
-                'meta_pixel_id' => null,
-                'whatsapp_number' => null,
-                'whatsapp_message' => null,
-            ],
-        ]]);
+        return response()->json([
+            'data' => [
+                'display' => HeroSetting::current(),
+                'hero' => [
+                    'slides' => HeroResource::collection($slides)->resolve(),
+                ],
+                'settings' => [
+                    'meta_pixel_id' => null,
+                    'whatsapp_number' => null,
+                    'whatsapp_message' => null,
+                ],
+            ]
+        ]);
     }
 }
