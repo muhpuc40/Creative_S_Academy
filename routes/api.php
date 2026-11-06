@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ComboController;
 use App\Http\Controllers\Api\CourseController;
+use App\Http\Controllers\Api\HomeController;
 use App\Http\Middleware\EnsureUserType;
 use App\Http\Middleware\LockApiLoginChallenge;
 use App\Http\Middleware\TrackDeviceActivity;
@@ -17,6 +18,9 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
+    // Website home page content (hero, popups, settings) in one call
+    Route::get('home', [HomeController::class, 'index']);
+
     Route::get('categories', [CategoryController::class, 'index']);
     Route::get('courses', [CourseController::class, 'index']);
     Route::get('courses/{course}', [CourseController::class, 'show'])->whereNumber('course');

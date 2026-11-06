@@ -23,6 +23,10 @@ return [
         ['label' => 'Combo offers', 'route' => 'admin.combos.index', 'icon' => 'percent', 'match' => 'admin.combos.*'],
         ['label' => 'Accounts', 'route' => 'admin.payment-accounts.index', 'icon' => 'wallet', 'match' => 'admin.payment-accounts.*'],
 
+        ['heading' => 'Website'],
+        ['label' => 'Hero content', 'route' => 'admin.website.hero.index', 'icon' => 'image', 'match' => 'admin.website.hero.*'],
+        ['label' => 'Hero settings', 'route' => 'admin.website.hero-settings.edit', 'icon' => 'sliders', 'match' => 'admin.website.hero-settings.*'],
+
         ['heading' => 'Communication'],
         ['label' => 'SMS composer', 'route' => 'admin.communication.sms.create', 'icon' => 'send', 'match' => 'admin.communication.sms.*'],
         ['label' => 'Email composer', 'route' => 'admin.communication.email.create', 'icon' => 'mail', 'match' => 'admin.communication.email.*'],

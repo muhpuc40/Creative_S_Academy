@@ -48,6 +48,7 @@ Route::middleware(['auth', EnsureAdminIsActive::class])->group(function () {
     require __DIR__ . '/admin-sales.php';
     require __DIR__ . '/admin-affiliate.php';
     require __DIR__ . '/admin-communication.php';
+    require __DIR__ . '/admin-website.php';
     require __DIR__ . '/admin-security.php';
     require __DIR__ . '/admin-system.php';
 
