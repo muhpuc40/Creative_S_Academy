@@ -47,11 +47,15 @@ class CourseController extends Controller
         ]);
     }
 
-    /** GET /api/v1/courses/{id} : full details of one published course. */
-    public function show(int $course): JsonResponse
+    /**
+     * GET /api/v1/courses/{id}  or  /api/v1/courses/{slug} : full details of one published course.
+     * The website uses the slug (its page URLs are /courses/{slug}).
+     */
+    public function show(string $course): JsonResponse
     {
         $course = Course::query()
             ->published()
+            ->where(ctype_digit($course) ? 'id' : 'slug', $course)
             ->with([
                 'category:id,name,slug',
                 'currentPrice.paymentRules' => fn ($q) => $q->where('is_active', true)->with('paidBeforeModule:id,title'),
@@ -64,7 +68,7 @@ class CourseController extends Controller
                 'batches' => fn ($q) => $q->openForEnrollment()->with('instructor:id,name,designation,avatar')
                     ->orderBy('start_date')->limit(3),
             ])
-            ->findOr($course, fn () => abort(404, 'Course not found.'));
+            ->firstOr(fn () => abort(404, 'Course not found.'));
 
         $stats = $course->reviews()->approved()->selectRaw('count(*) as total, avg(rating) as average')->first();
         $course->setAttribute('rating_count', (int) $stats->total);

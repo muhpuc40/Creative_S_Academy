@@ -25,7 +25,7 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
 
     Route::get('categories', [CategoryController::class, 'index']);
     Route::get('courses', [CourseController::class, 'index']);
-    Route::get('courses/{course}', [CourseController::class, 'show'])->whereNumber('course');
+    Route::get('courses/{course}', [CourseController::class, 'show']);
     Route::get('combos', [ComboController::class, 'index']);
     Route::get('combos/{combo}', [ComboController::class, 'show'])->whereNumber('combo');
 
