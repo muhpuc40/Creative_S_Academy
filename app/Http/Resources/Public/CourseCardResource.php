@@ -16,7 +16,9 @@ class CourseCardResource extends JsonResource
             'slug' => $this->slug,
             'thumbnail' => $this->thumbnail_url,
             'level' => $this->level,
-            'category' => $this->category ? ['id' => $this->category->id, 'name' => $this->category->name] : null,
+            'category' => $this->category
+                ? ['id' => $this->category->id, 'name' => $this->category->name, 'slug' => $this->category->slug]
+                : null,
             'price' => $this->currentPrice ? new PriceResource($this->currentPrice) : null,
             // Next batch a student can join. null = no batch open now.
             'batch' => $this->openBatch ? new BatchResource($this->openBatch) : null,

@@ -12,15 +12,15 @@ use Illuminate\Http\Request;
 class CourseController extends Controller
 {
     /**
-     * GET /api/v1/courses            all published courses
-     * GET /api/v1/courses?c_id=1     only one category
-     * GET /api/v1/courses?q=react    search by course title
+     * GET /api/v1/courses                              all published courses
+     * GET /api/v1/courses?category=data-science-ai      only one category (its slug)
+     * GET /api/v1/courses?q=react                       search by course title
      * Optional: ?per_page=12 (max 50)  ?page=2
      */
     public function index(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'c_id' => ['nullable', 'integer', 'min:1'],
+            'category' => ['nullable', 'string', 'max:255'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
             'q' => ['nullable', 'string', 'max:100'],
         ]);
@@ -30,7 +30,7 @@ class CourseController extends Controller
 
         $courses = Course::query()
             ->published()
-            ->when($data['c_id'] ?? null, fn ($q, $id) => $q->where('course_categories_id', $id))
+            ->when($data['category'] ?? null, fn ($q, $slug) => $q->whereHas('category', fn ($c) => $c->where('slug', $slug)))
             ->when($search !== '', fn ($q) => $q->where('title', 'like', "%{$search}%"))
             ->with(['category:id,name,slug', 'currentPrice', 'openBatch'])
             ->latest('id')
