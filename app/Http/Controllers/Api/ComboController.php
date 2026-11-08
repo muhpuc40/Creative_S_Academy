@@ -33,12 +33,13 @@ class ComboController extends Controller
         ]);
     }
 
-    /** GET /api/v1/combos/{id} : full details of one combo a student can buy right now. */
-    public function show(int $combo): JsonResponse
+    /** GET /api/v1/combos/{slug} : full details of one combo a student can buy right now. */
+    public function show(string $combo): JsonResponse
     {
         $combo = $this->visible()
             ->with(['courses.currentPrice', 'courses.category:id,name,slug', 'courses.openBatch'])
-            ->findOr($combo, fn() => abort(404, 'Combo not found.'));
+            ->where('slug', $combo)
+            ->firstOr(fn() => abort(404, 'Combo not found.'));
 
         return response()->json(['data' => (new ComboDetailResource($combo))->resolve()]);
     }

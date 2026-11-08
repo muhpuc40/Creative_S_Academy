@@ -9,6 +9,7 @@ use App\Models\PaymentCombo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Support\Media;
 use Illuminate\View\View;
 
@@ -47,6 +48,7 @@ class PaymentComboController extends Controller
     public function store(PaymentComboRequest $request): RedirectResponse
     {
         $data = $request->safe()->except(['course_ids', 'thumbnail']);
+        $data['slug'] = ($data['slug'] ?? null) ?: $this->uniqueSlug($data['title']);
         $data['is_active'] = $request->boolean('is_active');
         $data['created_by'] = $request->user()->id;
 
@@ -74,6 +76,7 @@ class PaymentComboController extends Controller
     public function update(PaymentComboRequest $request, PaymentCombo $combo): RedirectResponse
     {
         $data = $request->safe()->except(['course_ids', 'thumbnail']);
+        $data['slug'] = ($data['slug'] ?? null) ?: $combo->slug;
         $data['is_active'] = $request->boolean('is_active');
 
         if ($request->hasFile('thumbnail')) {
@@ -116,5 +119,19 @@ class PaymentComboController extends Controller
             })
             ->orderBy('title')
             ->get(['id', 'title', 'course_categories_id']);
+    }
+
+    /** "new-year-offer", or "new-year-offer-2" when taken (deleted combos keep theirs). */
+    private function uniqueSlug(string $title): string
+    {
+        $base = Str::slug($title) ?: 'combo';
+        $slug = $base;
+        $i = 2;
+
+        while (PaymentCombo::withTrashed()->where('slug', $slug)->exists()) {
+            $slug = $base . '-' . $i++;
+        }
+
+        return $slug;
     }
 }

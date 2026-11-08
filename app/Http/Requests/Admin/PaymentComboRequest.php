@@ -7,6 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
+/** Create and update of a combo (the same rules; "slug" ignores the combo being edited). */
 class PaymentComboRequest extends FormRequest
 {
     public function authorize(): bool
@@ -16,8 +17,11 @@ class PaymentComboRequest extends FormRequest
 
     public function rules(): array
     {
+        $combo = $this->route('combo');
+
         return [
             'title' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'alpha_dash:ascii', 'max:255', Rule::unique('payment_combos', 'slug')->ignore($combo?->id)],
             'description' => ['nullable', 'string', 'max:2000'],
             'thumbnail' => ['nullable', 'image', 'max:2048'],
             'price_type' => ['required', Rule::enum(AmountType::class)],

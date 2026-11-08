@@ -56,6 +56,7 @@
                         <tr>
                             <td>
                                 <p class="font-medium text-slate-900">{{ $combo->title }}</p>
+                                <p class="text-xs text-slate-400">/{{ $combo->slug }}</p>
                                 <p class="text-xs text-slate-500">
                                     {{ $combo->price_type->value === 'flat' ? 'Fixed price' : $combo->price_value . '% off' }}
                                 </p>

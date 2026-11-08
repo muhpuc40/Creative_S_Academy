@@ -13,6 +13,7 @@ class ComboDetailResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
+            'slug' => $this->slug,
             'description' => $this->description,
             'thumbnail' => $this->thumbnail_url,
             // Each course as its own card (category, its own price, next open batch) so the

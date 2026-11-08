@@ -9,6 +9,10 @@ combo) --}}
                         required />
                 </div>
                 <div class="sm:col-span-2">
+                    <x-admin.input name="slug" label="Slug (link name)" :value="$combo->slug" placeholder="new-year-offer"
+                        hint="Leave empty to make it from the title. The website link is /combos/slug." />
+                </div>
+                <div class="sm:col-span-2">
                     <x-admin.textarea name="description" label="Description (optional)" x-model="form.description"
                         rows="2" />
                 </div>

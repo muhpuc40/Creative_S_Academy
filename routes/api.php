@@ -27,7 +27,7 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
     Route::get('courses', [CourseController::class, 'index']);
     Route::get('courses/{course}', [CourseController::class, 'show']);
     Route::get('combos', [ComboController::class, 'index']);
-    Route::get('combos/{combo}', [ComboController::class, 'show'])->whereNumber('combo');
+    Route::get('combos/{combo}', [ComboController::class, 'show']); // slug
 
     // Affiliate ref links: track a visit, and let the frontend check who a visitor is attributed to.
     Route::post('ref/{ref_code}/click', [AffiliateClickController::class, 'click']);

@@ -11,6 +11,7 @@ return new class extends Migration {
         Schema::create('payment_combos', function (Blueprint $table) {
             $table->id();
             $table->string('title');                                       // New Year Offer
+            $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->string('thumbnail')->nullable();
             $table->string('price_type', 10);                              // fixed (the combo price) | percent (discount on the sum)
