@@ -10,6 +10,7 @@ use App\Models\Batch;
 use App\Models\Course;
 use App\Models\CourseContent;
 use App\Models\Instructor;
+use App\Services\Google\GoogleMeet;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -61,7 +62,7 @@ class BatchController extends Controller
         return redirect()->route('admin.batches.show', $batch)->with('success', 'Batch created. Now add its class schedule.');
     }
 
-    public function show(Batch $batch): View
+    public function show(Batch $batch, GoogleMeet $meet): View
     {
         $batch->load([
             'course:id,title,thumbnail',
@@ -88,6 +89,7 @@ class BatchController extends Controller
             'itemTypes' => $itemTypes,
             'instructors' => Instructor::orderBy('name')->get(['id', 'name']),
             'contents' => CourseContent::orderBy('name')->get(['id', 'name']),
+            'meetReady' => $meet->ready(), // "Generate" Google Meet link in the class form
         ]);
     }
 

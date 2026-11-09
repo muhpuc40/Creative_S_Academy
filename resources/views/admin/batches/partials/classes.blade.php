@@ -10,8 +10,20 @@
 <div x-data="{
         open: false, mode: 'add', action: '', form: {},
         types: {{ \Illuminate\Support\Js::from($itemTypes) }},
-        show(mode, action, form) { this.mode = mode; this.action = action; this.form = form; this.open = true; },
+        show(mode, action, form) { this.mode = mode; this.action = action; this.form = form; this.meetError = ''; this.open = true; },
         get isLive() { return this.types[this.form.course_module_items_id] === 'live'; },
+        meetBusy: false, meetError: '',
+        async generateMeet() {
+            this.meetBusy = true; this.meetError = '';
+            try {
+                const res = await fetch('{{ route('admin.google-meet.link') }}', { method: 'POST', headers: {
+                    'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content } });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.meeting_url) { this.form.meeting_url = data.meeting_url; this.form.platform = 'meet'; }
+                else { this.meetError = data.message || 'Could not create the Google Meet link. Please try again.'; }
+            } catch (e) { this.meetError = 'Could not reach the server. Please try again.'; }
+            this.meetBusy = false;
+        },
      }">
 
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -94,53 +106,70 @@
         @endif
     </x-admin.card>
 
-    <x-admin.dialog show="open" close="open = false" title="mode === 'add' ? 'Add class' : 'Edit class'" max-width="max-w-xl">
+    <x-admin.dialog show="open" close="open = false" title="mode === 'add' ? 'Add class' : 'Edit class'" max-width="max-w-4xl">
         <form method="POST" :action="action" class="space-y-4">
             @csrf
             <input type="hidden" name="_modal" value="1">
             <input type="hidden" name="_method" value="PUT" :disabled="mode === 'add'">
 
-            <x-admin.select id="class_item" name="course_module_items_id" label="Class (module item)" x-model="form.course_module_items_id" required>
-                <option value="">Choose a class...</option>
-                @if (! empty($itemOptions['live']))
-                    <optgroup label="Live classes">
-                        @foreach ($itemOptions['live'] as $item) <option value="{{ $item['id'] }}">{{ $item['label'] }}</option> @endforeach
-                    </optgroup>
-                @endif
-                @if (! empty($itemOptions['recorded']))
-                    <optgroup label="Recorded classes">
-                        @foreach ($itemOptions['recorded'] as $item) <option value="{{ $item['id'] }}">{{ $item['label'] }}</option> @endforeach
-                    </optgroup>
-                @endif
-            </x-admin.select>
+            {{-- left: class details; right: live class link (only for a live item) --}}
+            <div class="grid gap-6" :class="isLive && 'md:grid-cols-2'">
+                <div class="space-y-4">
+                    <x-admin.select id="class_item" name="course_module_items_id" label="Class (module item)" x-model="form.course_module_items_id" required>
+                        <option value="">Choose a class...</option>
+                        @if (! empty($itemOptions['live']))
+                            <optgroup label="Live classes">
+                                @foreach ($itemOptions['live'] as $item) <option value="{{ $item['id'] }}">{{ $item['label'] }}</option> @endforeach
+                            </optgroup>
+                        @endif
+                        @if (! empty($itemOptions['recorded']))
+                            <optgroup label="Recorded classes">
+                                @foreach ($itemOptions['recorded'] as $item) <option value="{{ $item['id'] }}">{{ $item['label'] }}</option> @endforeach
+                            </optgroup>
+                        @endif
+                    </x-admin.select>
 
-            <div class="grid grid-cols-2 gap-3">
-                <x-admin.input id="class_start" name="class_start_time" type="datetime-local" label="Start" x-model="form.class_start_time" required />
-                <x-admin.input id="class_duration" name="duration_minutes" type="number" min="1" max="600" label="Minutes" x-model="form.duration_minutes" required />
-            </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <x-admin.input id="class_start" name="class_start_time" type="datetime-local" label="Start" x-model="form.class_start_time" required />
+                        <x-admin.input id="class_duration" name="duration_minutes" type="number" min="1" max="600" label="Minutes" x-model="form.duration_minutes" required />
+                    </div>
 
-            <div class="grid grid-cols-2 gap-3">
-                <x-admin.select id="class_instructor" name="instructor_id" label="Instructor" x-model="form.instructor_id">
-                    <option value="">Batch instructor</option>
-                    @foreach ($instructors as $instructor) <option value="{{ $instructor->id }}">{{ $instructor->name }}</option> @endforeach
-                </x-admin.select>
-                <x-admin.select id="class_status" name="status" label="Status" x-model="form.status" required>
-                    @foreach (\App\Enums\ClassStatus::cases() as $status) <option value="{{ $status->value }}">{{ ucfirst($status->value) }}</option> @endforeach
-                </x-admin.select>
-            </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <x-admin.select id="class_instructor" name="instructor_id" label="Instructor" x-model="form.instructor_id">
+                            <option value="">Batch instructor</option>
+                            @foreach ($instructors as $instructor) <option value="{{ $instructor->id }}">{{ $instructor->name }}</option> @endforeach
+                        </x-admin.select>
+                        <x-admin.select id="class_status" name="status" label="Status" x-model="form.status" required>
+                            @foreach (\App\Enums\ClassStatus::cases() as $status) <option value="{{ $status->value }}">{{ ucfirst($status->value) }}</option> @endforeach
+                        </x-admin.select>
+                    </div>
+                </div>
 
-            {{-- live link: only for a live item --}}
-            <div x-show="isLive" x-cloak class="space-y-4 rounded-lg bg-slate-50 p-4">
-                <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Live class link</p>
-                <x-admin.select id="class_platform" name="platform" label="Platform" x-model="form.platform" ::disabled="! isLive">
-                    @foreach (\App\Enums\LivePlatform::cases() as $platform) <option value="{{ $platform->value }}">{{ ucfirst($platform->value) }}</option> @endforeach
-                </x-admin.select>
-                <x-admin.input id="class_url" name="meeting_url" type="url" label="Meeting link" x-model="form.meeting_url" placeholder="https://" ::disabled="! isLive"
-                    hint="Students never see this link. They join through a tracked link." />
-                <x-admin.select id="class_recording" name="recording_content_id" label="Recording (after the class)" x-model="form.recording_content_id" ::disabled="! isLive">
-                    <option value="">Not yet</option>
-                    @foreach ($contents as $content) <option value="{{ $content->id }}">{{ $content->name }}</option> @endforeach
-                </x-admin.select>
+                <div x-show="isLive" x-cloak class="space-y-4 self-start rounded-lg bg-slate-50 p-4">
+                    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Live class link</p>
+                    <x-admin.select id="class_platform" name="platform" label="Platform" x-model="form.platform" ::disabled="! isLive">
+                        @foreach (\App\Enums\LivePlatform::cases() as $platform) <option value="{{ $platform->value }}">{{ ucfirst($platform->value) }}</option> @endforeach
+                    </x-admin.select>
+                    <div class="relative">
+                        <x-admin.input id="class_url" name="meeting_url" type="url" label="Meeting link" x-model="form.meeting_url" placeholder="https://" ::disabled="! isLive"
+                            hint="Students never see this link. They join through a tracked link." />
+                        {{-- beside the label: a new Google Meet link from the connected Google account (System > Google Meet) --}}
+                        @if ($meetReady)
+                            <button type="button" @click="generateMeet()" :disabled="meetBusy"
+                                class="absolute right-0 top-0 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50">
+                                <x-admin.icon name="video" class="size-3.5" />
+                                <span x-text="meetBusy ? 'Generating...' : 'Generate Google Meet link'"></span>
+                            </button>
+                        @else
+                            <a href="{{ route('admin.google-meet.index') }}" class="absolute right-0 top-0 text-xs font-medium text-slate-500 hover:text-indigo-600 hover:underline">Set up Google Meet</a>
+                        @endif
+                        <p x-show="meetError" x-text="meetError" x-cloak class="mt-1.5 text-xs text-red-600"></p>
+                    </div>
+                    <x-admin.select id="class_recording" name="recording_content_id" label="Recording (after the class)" x-model="form.recording_content_id" ::disabled="! isLive">
+                        <option value="">Not yet</option>
+                        @foreach ($contents as $content) <option value="{{ $content->id }}">{{ $content->name }}</option> @endforeach
+                    </x-admin.select>
+                </div>
             </div>
 
             <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
