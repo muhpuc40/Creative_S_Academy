@@ -44,6 +44,7 @@ return [
         ['heading' => 'System'],
         ['label' => 'Logs', 'route' => 'admin.logs.index', 'icon' => 'file', 'match' => 'admin.logs.*'],
         ['label' => 'Server', 'route' => 'admin.server.index', 'icon' => 'monitor', 'match' => 'admin.server.*'],
+        ['label' => 'SMS', 'route' => 'admin.sms-settings.edit', 'icon' => 'phone', 'match' => 'admin.sms-settings.*'],
         ['label' => 'Google Meet', 'route' => 'admin.google-meet.index', 'icon' => 'video', 'match' => 'admin.google-meet.*'],
         ['label' => 'Settings', 'route' => 'admin.settings.index', 'icon' => 'sliders', 'match' => 'admin.settings.*'],
     ],

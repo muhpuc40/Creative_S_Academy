@@ -5,6 +5,7 @@
 use App\Http\Controllers\Admin\System\GoogleMeetController;
 use App\Http\Controllers\Admin\System\LogController;
 use App\Http\Controllers\Admin\System\ServerController;
+use App\Http\Controllers\Admin\System\SmsSettingController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -22,3 +23,10 @@ Route::delete('system/google-meet', [GoogleMeetController::class, 'disconnect'])
 Route::post('system/google-meet/link', [GoogleMeetController::class, 'link'])
     ->middleware('throttle:20,1')
     ->name('admin.google-meet.link');
+
+// SMS gateway settings (API key, sender ID, rate...): saved in the database, no redeploy
+Route::get('system/sms', [SmsSettingController::class, 'edit'])->name('admin.sms-settings.edit');
+Route::put('system/sms', [SmsSettingController::class, 'update'])->name('admin.sms-settings.update');
+Route::get('system/sms/balance', [SmsSettingController::class, 'balance'])
+    ->middleware('throttle:20,1')
+    ->name('admin.sms-settings.balance');

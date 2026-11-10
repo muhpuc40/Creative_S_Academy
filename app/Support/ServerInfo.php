@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\SmsSetting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -390,7 +391,7 @@ PS;
             'Session driver' => config('session.driver'),
             'Queue driver' => config('queue.default'),
             'Mail driver' => config('mail.default'),
-            'SMS driver' => config('messaging.sms.driver'),
+            'SMS driver' => SmsSetting::current()->driver,
             'Pending jobs' => $jobs,
             'Failed jobs' => $failed,
             'storage/ writable' => is_writable(storage_path()),

@@ -10,8 +10,7 @@
                     @method('PUT')
                     <x-admin.input name="client_id" label="Client ID" :value="$client?->client_id" placeholder="123456789-abc.apps.googleusercontent.com" required />
                     <x-admin.input name="client_secret" type="password" label="Client secret" autocomplete="off"
-                        :placeholder="$client ? 'Saved (leave empty to keep it)' : 'GOCSPX-...'"
-                        :hint="$client ? 'Saved encrypted. Type a new one only to change it.' : 'Stored encrypted.'" />
+                        :placeholder="$client ? str($client->client_secret)->mask('*', 0, -4) : 'GOCSPX-...'" />
                     <div class="flex justify-end">
                         <x-admin.button type="submit">Save</x-admin.button>
                     </div>

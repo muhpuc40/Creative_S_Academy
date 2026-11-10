@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\ComposeSmsRequest;
 use App\Jobs\SendQuickSms;
 use App\Models\Affiliate;
 use App\Models\Instructor;
+use App\Models\SmsSetting;
 use App\Models\Student;
 use Illuminate\Bus\Batch;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +26,7 @@ class SmsComposerController extends Controller
                 'instructor' => Instructor::query()->where('status', 'active')->whereNotNull('phone')->orderBy('name')->get(['id', 'name', 'phone']),
                 'affiliate' => Affiliate::query()->where('status', 'active')->whereNotNull('phone')->orderBy('name')->get(['id', 'name', 'phone']),
             ],
-            'rate' => config('messaging.sms.rate'),
+            'rate' => SmsSetting::current()->rate,
         ]);
     }
 
@@ -59,7 +60,7 @@ class SmsComposerController extends Controller
         $message = trim($data['message']);
         $adminId = $request->user()?->id;
         $recipientType = $data['recipient_type'];
-        $chunkSize = max(1, (int) config('messaging.sms.bulk_chunk', 100));
+        $chunkSize = max(1, SmsSetting::current()->bulk_chunk);
 
         $jobs = $numbers->chunk($chunkSize)
             ->map(fn($chunk) => new SendQuickSms(
