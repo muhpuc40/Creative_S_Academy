@@ -42,6 +42,7 @@ return [
         ['label' => 'Login Info', 'route' => 'admin.login-infos.index', 'icon' => 'lock', 'match' => 'admin.login-infos.*'],
 
         ['heading' => 'System'],
+        ['label' => 'Security Check', 'route' => 'admin.security-check.index', 'icon' => 'shield', 'match' => 'admin.security-check.*'],
         ['label' => 'Logs', 'route' => 'admin.logs.index', 'icon' => 'file', 'match' => 'admin.logs.*'],
         ['label' => 'Server', 'route' => 'admin.server.index', 'icon' => 'monitor', 'match' => 'admin.server.*'],
         ['label' => 'File types', 'route' => 'admin.file-types.index', 'icon' => 'file', 'match' => 'admin.file-types.*'],

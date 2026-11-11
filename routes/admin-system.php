@@ -5,6 +5,7 @@
 use App\Http\Controllers\Admin\System\FileTypeController;
 use App\Http\Controllers\Admin\System\GoogleMeetController;
 use App\Http\Controllers\Admin\System\LogController;
+use App\Http\Controllers\Admin\System\SecurityCheckController;
 use App\Http\Controllers\Admin\System\ServerController;
 use App\Http\Controllers\Admin\System\SmsSettingController;
 
@@ -37,3 +38,13 @@ Route::resource('system/file-types', FileTypeController::class)
     ->only(['index', 'store', 'update', 'destroy'])
     ->parameters(['file-types' => 'fileType'])
     ->names('admin.file-types');
+
+// Security Check: on-demand scan of uploaded files + config/storage/upload health checks
+Route::get('system/security-check', [SecurityCheckController::class, 'index'])->name('admin.security-check.index');
+Route::post('system/security-check/start', [SecurityCheckController::class, 'start'])->name('admin.security-check.start');
+Route::post('system/security-check/files', [SecurityCheckController::class, 'files'])->name('admin.security-check.files');
+Route::post('system/security-check/check/{check}', [SecurityCheckController::class, 'check'])->name('admin.security-check.check');
+Route::post('system/security-check/quarantine/{quarantine}/restore', [SecurityCheckController::class, 'restore'])
+    ->whereNumber('quarantine')->name('admin.security-check.restore');
+Route::delete('system/security-check/quarantine/{quarantine}', [SecurityCheckController::class, 'destroy'])
+    ->whereNumber('quarantine')->name('admin.security-check.destroy');
