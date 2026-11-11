@@ -43,6 +43,7 @@ Route::middleware(['auth', EnsureAdminIsActive::class])->group(function () {
     Route::post('logout', [LoginController::class, 'destroy'])->name('admin.logout');
     Route::get('dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
+    require __DIR__ . '/admin-account.php';
     require __DIR__ . '/admin-courses.php';
     require __DIR__ . '/admin-batches.php';
     require __DIR__ . '/admin-sales.php';
