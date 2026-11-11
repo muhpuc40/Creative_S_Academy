@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\FileType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -49,9 +50,14 @@ class FileTypeController extends Controller
 
     private function validated(Request $request, ?FileType $fileType = null): array
     {
-        $request->merge(['extensions' => FileType::parse($request->input('extensions'))]);
-
-        $data = $request->validate([
+        // Validate a parsed copy of the extensions without touching the request, so that
+        // on failure old('extensions') stays the string the admin typed (not an array,
+        // which the textarea's old() render cannot escape).
+        $data = Validator::make([
+            'name' => $request->input('name'),
+            'extensions' => FileType::parse($request->input('extensions')),
+            'max_size_mb' => $request->input('max_size_mb'),
+        ], [
             'name' => ['required', 'string', 'max:100', Rule::unique('file_types')->ignore($fileType)],
             'extensions' => ['required', 'array', 'max:100'],
             'extensions.*' => ['string', 'max:20', Rule::notIn(FileType::blocked())],
@@ -59,7 +65,7 @@ class FileTypeController extends Controller
         ], [
             'extensions.required' => 'Add at least one extension.',
             'extensions.*.not_in' => '.:input files can never be allowed: they could run on the server or in the browser.',
-        ]);
+        ])->validate();
 
         return $data + ['is_active' => $request->boolean('is_active')];
     }

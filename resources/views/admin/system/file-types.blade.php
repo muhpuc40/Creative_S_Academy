@@ -1,6 +1,13 @@
 <x-admin.layout title="File types">
     @php($blank = ['name' => '', 'extensions' => '', 'max_size_mb' => 50, 'is_active' => true])
-    <div x-data="{ open: false, mode: 'add', action: '{{ route('admin.file-types.store') }}', form: {{ \Illuminate\Support\Js::from($blank) }} }">
+    @php($failed = $errors->any())
+    @php($seed = $failed ? ['name' => old('name', ''), 'extensions' => old('extensions', ''), 'max_size_mb' => (int) old('max_size_mb', 50), 'is_active' => (bool) old('is_active', true)] : $blank)
+    <div x-data="{
+            open: {{ $failed ? 'true' : 'false' }},
+            mode: '{{ $failed ? old('_form_mode', 'add') : 'add' }}',
+            action: '{{ $failed ? old('_form_action', route('admin.file-types.store')) : route('admin.file-types.store') }}',
+            form: {{ \Illuminate\Support\Js::from($seed) }}
+         }">
         <x-admin.page-header title="File types"
             description="Formats allowed in the resource library, assignment files and email attachments. Changes work at once.">
             <x-admin.button type="button"
@@ -58,9 +65,16 @@
                 @csrf
                 <input type="hidden" name="_method" value="PUT" :disabled="mode === 'add'">
                 <input type="hidden" name="_modal" value="1">
+                <input type="hidden" name="_form_mode" :value="mode">
+                <input type="hidden" name="_form_action" :value="action">
                 <x-admin.input id="ft_name" name="name" label="Name" x-model="form.name" placeholder="e.g. CLO3D" required />
                 <x-admin.textarea id="ft_extensions" name="extensions" label="Extensions" rows="3" x-model="form.extensions"
                     placeholder="zprj, zpac, obj, fbx" required />
+                @foreach ($errors->get('extensions.*') as $messages)
+                    @foreach ($messages as $message)
+                        <p class="-mt-2 text-xs text-red-600">{{ $message }}</p>
+                    @endforeach
+                @endforeach
                 <x-admin.input id="ft_max" name="max_size_mb" type="number" min="1" :max="$maxMb" label="Max size (MB)"
                     x-model="form.max_size_mb" required />
                 <label class="flex items-center gap-2 text-sm text-slate-700">
