@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Rules\AllowedFile;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -32,7 +33,7 @@ class ComposeEmailRequest extends FormRequest
             'custom_emails' => ['nullable', 'string', 'max:10000'],
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:100000'],
-            'attachment' => ['nullable', 'file', 'max:10240', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip,png,jpg,jpeg,txt'],
+            'attachment' => ['nullable', 'file', 'max:10240', new AllowedFile], // 10 MB: what mail servers accept
         ];
     }
 

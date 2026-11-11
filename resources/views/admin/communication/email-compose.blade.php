@@ -163,10 +163,9 @@
                     <label for="attachment" class="mb-1.5 block text-sm font-medium text-slate-700">Attachment
                         (optional)</label>
                     <input id="attachment" name="attachment" type="file"
-                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.png,.jpg,.jpeg,.txt"
+                        accept="{{ \App\Models\FileType::accept() }}"
                         class="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200">
-                    <p class="mt-1.5 text-xs text-slate-500">Maximum 10 MB. PDF, Office files, ZIP, images, and text
-                        files are supported.</p>
+                    <p class="mt-1.5 text-xs text-slate-500">Maximum 10 MB. Formats from System > File types.</p>
                     @error('attachment')
                         <p class="mt-1.5 text-xs text-red-600">{{ $message }}</p>
                     @enderror

@@ -1,10 +1,11 @@
 <x-admin.layout title="Upload resource">
     <div
-        x-data="{ open: false, mode: 'add', action: '{{ route('admin.library.resources.store') }}', form: { name: '', url: '' } }">
+        x-data="{ open: false, mode: 'add', uploading: false, action: '{{ route('admin.library.resources.store') }}', form: { name: '', url: '' } }"
+        @uploader-busy.window="uploading = $event.detail">
         <x-admin.page-header title="Resource library"
             description="Slides, PDFs and other files students can use. One resource can be reused in many items.">
             <x-admin.button type="button"
-                @click="mode = 'add'; action = '{{ route('admin.library.resources.store') }}'; form = { name: '', url: '' }; open = true">
+                @click="mode = 'add'; action = '{{ route('admin.library.resources.store') }}'; form = { name: '', url: '' }; $dispatch('uploader-reset'); open = true">
                 <x-admin.icon name="upload" class="size-4" /> Upload resource
             </x-admin.button>
         </x-admin.page-header>
@@ -39,7 +40,7 @@
                                 <button type="button"
                                     class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" title="Edit"
                                     aria-label="Edit resource"
-                                    @click="mode = 'edit'; action = '{{ route('admin.library.resources.update', $resource) }}'; form = {{ \Illuminate\Support\Js::from(['name' => $resource->name, 'url' => \App\Support\Media::isExternal($resource->url) ? $resource->url : '']) }}; open = true">
+                                    @click="mode = 'edit'; action = '{{ route('admin.library.resources.update', $resource) }}'; form = {{ \Illuminate\Support\Js::from(['name' => $resource->name, 'url' => \App\Support\Media::isExternal($resource->url) ? $resource->url : '']) }}; $dispatch('uploader-reset'); open = true">
                                     <x-admin.icon name="edit" class="size-4" />
                                 </button>
                                 <x-admin.delete-form :action="route('admin.library.resources.destroy', $resource)"
@@ -55,20 +56,27 @@
         <div class="mt-6">{{ $resources->links() }}</div>
 
         <x-admin.dialog show="open" close="open = false" title="mode === 'add' ? 'Upload resource' : 'Edit resource'">
-            <form method="POST" :action="action" enctype="multipart/form-data" class="space-y-4">
+            <form method="POST" :action="action" class="space-y-4">
                 @csrf
                 <input type="hidden" name="_method" value="PUT" :disabled="mode === 'add'">
                 <input type="hidden" name="_modal" value="1">
                 <x-admin.input id="res_name" name="name" label="Name" x-model="form.name" required />
-                <x-admin.input id="res_file" name="file" type="file" label="File"
-                    hint="PDF, ZIP, Office files, images or video, up to 50 MB." />
+                @include('admin.partials.chunkit-uploader', [
+                    'id' => 'res_file',
+                    'label' => 'File',
+                    'accept' => implode(',', array_map(fn ($ext) => ".{$ext}", array_keys($limits))),
+                    'hint' => 'Formats and sizes from System > File types. Uploads in pieces and resumes if the connection drops.',
+                    'limits' => $limits,
+                ])
                 <x-admin.input id="res_url" name="url" label="…or paste a link" x-model="form.url"
                     placeholder="https://" />
                 <p x-show="mode === 'edit'" class="text-xs text-slate-500">Edit: leave file and link as they are to keep
                     the current one.</p>
                 <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
                     <x-admin.button type="button" variant="secondary" @click="open = false">Cancel</x-admin.button>
-                    <x-admin.button type="submit">Save</x-admin.button>
+                    <x-admin.button type="submit" ::disabled="uploading">
+                        <span x-text="uploading ? 'Wait for the upload…' : 'Save'">Save</span>
+                    </x-admin.button>
                 </div>
             </form>
         </x-admin.dialog>

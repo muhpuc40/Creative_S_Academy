@@ -27,7 +27,9 @@ Route::post('batches/{batch}/exams', [BatchExamController::class, 'store'])->whe
 Route::put('batch-exams/{exam}', [BatchExamController::class, 'update'])->whereNumber('exam')->name('admin.batch-exams.update');
 Route::patch('batch-exams/{exam}/result', [BatchExamController::class, 'result'])->whereNumber('exam')->name('admin.batch-exams.result');
 Route::delete('batch-exams/{exam}', [BatchExamController::class, 'destroy'])->whereNumber('exam')->name('admin.batch-exams.destroy');
+Route::get('batch-exams/{exam}/paper', [BatchExamController::class, 'paper'])->whereNumber('exam')->name('admin.batch-exams.paper'); // private file, admins only
 
 Route::post('batches/{batch}/assignments', [BatchAssignmentController::class, 'store'])->whereNumber('batch')->name('admin.batch-assignments.store');
 Route::put('batch-assignments/{assignment}', [BatchAssignmentController::class, 'update'])->whereNumber('assignment')->name('admin.batch-assignments.update');
 Route::delete('batch-assignments/{assignment}', [BatchAssignmentController::class, 'destroy'])->whereNumber('assignment')->name('admin.batch-assignments.destroy');
+Route::get('batch-assignments/{assignment}/file', [BatchAssignmentController::class, 'file'])->whereNumber('assignment')->name('admin.batch-assignments.file'); // private file, admins only

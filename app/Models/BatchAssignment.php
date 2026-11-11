@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\AssignmentStatus;
-use App\Support\Media;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,10 +29,10 @@ class BatchAssignment extends Model
         ];
     }
 
-    /** Link of the uploaded assignment file (or null). */
+    /** Link of the uploaded assignment file (or null). The file is private: admins only. */
     protected function assignmentFileUrl(): Attribute
     {
-        return Attribute::get(fn() => Media::url($this->assignment_file));
+        return Attribute::get(fn() => $this->assignment_file ? route('admin.batch-assignments.file', $this) : null);
     }
 
     public function batch(): BelongsTo

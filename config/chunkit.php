@@ -58,21 +58,19 @@ return [
     | Allowed MIME types
     |--------------------------------------------------------------------------
     |
-    | Entries are either exact types ('video/mp4') or a family wildcard
-    | ('video/*'). The type is checked when the upload is initiated and again
-    | against the real file content before the merged file is published, so a
-    | client cannot get past it by lying about the type.
-    |
-    | An empty array rejects every upload, so nothing is accepted by accident.
+    | Creative S Academy: every type. Chunkit only receives the file onto the
+    | private disk; the app checks it when the file is attached:
+    |   - lesson content (CourseContentController): the real type must be a
+    |     video (MP4, WEBM, MOV, MKV) or a PDF;
+    |   - resources (CourseResourceController): System > File types
+    |     (extension and size), because formats like .zprj or .emb have no
+    |     MIME type that could be listed here.
     |
     */
 
     'allowed_mimes' => [
-        'video/mp4',
-        'video/webm',
-        'video/quicktime',
-        'video/x-matroska',
-        'application/pdf',
+        'application/*', 'audio/*', 'chemical/*', 'font/*', 'image/*', 'inode/*',
+        'message/*', 'model/*', 'multipart/*', 'text/*', 'video/*',
     ],
 
     /*
@@ -80,16 +78,20 @@ return [
     | Blocked extensions
     |--------------------------------------------------------------------------
     |
-    | File extensions (without the dot, any case) that are always refused, even
-    | when the MIME type is allowed. Finished files are usually written to a web
-    | accessible disk, so an uploaded script must never keep an executable name.
+    | Creative S Academy: THE never-allowed list for every upload. Chunkit
+    | refuses these names itself, and App\Models\FileType::blocked() uses the
+    | same list for System > File types, assignment files and email
+    | attachments. Lowercase, without the dot. Every part of a name is
+    | checked, so "shell.php.zip" is refused along with "shell.php".
+    | These could run on the server (scripts) or in the browser (web pages).
     |
     */
 
     'blocked_extensions' => [
-        'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar', 'phps',
+        'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar', 'phps', 'pht', 'inc',
         'pl', 'py', 'cgi', 'asp', 'aspx', 'jsp',
-        'sh', 'bash', 'bat', 'cmd', 'ps1', 'exe', 'dll', 'com', 'msi',
+        'sh', 'bash', 'bat', 'cmd', 'ps1', 'dll', 'com',
+        'html', 'htm', 'xhtml', 'shtml', 'js', 'mjs',
         'htaccess', 'htpasswd',
     ],
 

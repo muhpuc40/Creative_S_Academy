@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->string('title')->nullable();
             $table->string('amount_type', 10);                             // percent | flat
             $table->decimal('amount', 10, 2);
-            $table->timestamp('expires_at');                               // deadline
+            $table->dateTime('expires_at');                                // deadline. dateTime, not timestamp: on MariaDB/MySQL with explicit_defaults_for_timestamp=OFF (XAMPP) a NOT NULL timestamp silently gets ON UPDATE CURRENT_TIMESTAMP
             $table->string('status', 20)->default('active');               // active | used | cancelled  (expired = active + past expires_at)
             $table->timestamp('used_at')->nullable();                      // set when an order takes it, cleared if that order is cancelled
             $table->timestamp('emailed_at')->nullable();

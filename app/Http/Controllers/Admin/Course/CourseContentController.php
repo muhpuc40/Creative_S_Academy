@@ -4,14 +4,13 @@ namespace App\Http\Controllers\Admin\Course;
 
 use App\Http\Controllers\Controller;
 use App\Models\CourseContent;
+use App\Support\FinishedUpload;
 use App\Support\Media;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use Muhpuc40\Chunkit\Models\ChunkedUpload;
 
 /**
  * GET /courses/upload-content
@@ -101,45 +100,36 @@ class CourseContentController extends Controller
         return back()->with('success', 'Content deleted.');
     }
 
+    /** What a lesson can be: the real type of the file, checked from its bytes. */
+    private const CONTENT_MIMES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-matroska', 'application/pdf'];
+
     /**
-     * Takes a finished chunkit upload and makes it this content's file: moves it into the
-     * content's private folder, records name/size/real type, and deletes the upload row so
-     * the same upload id can never be attached twice.
+     * Takes a finished chunkit upload and makes it this content's file: checks its real type,
+     * moves it into the content's private folder, records name/size/type, and deletes the
+     * upload row so the same upload id can never be attached twice.
      */
     private function attachUpload(CourseContent $content, string $uploadId): void
     {
-        /** @var ChunkedUpload|null $upload */
-        $upload = ChunkedUpload::where('upload_id', $uploadId)->lockForUpdate()->first();
+        $file = FinishedUpload::take($uploadId);
+        $mime = $file->mime();
 
-        if (! $upload || $upload->status !== ChunkedUpload::STATUS_COMPLETED || ! $upload->destination_path) {
-            throw ValidationException::withMessages([
-                'chunkit_upload_id' => 'The uploaded file is not ready yet, or was already used. Upload it again.',
-            ]);
+        if (! in_array($mime, self::CONTENT_MIMES, true)) {
+            $file->reject('Only a video (MP4, WEBM, MOV, MKV) or a PDF can be lesson content.');
         }
 
-        $disk = config('chunkit.final_disk');
-        $storage = Storage::disk($disk);
-
-        if (! $storage->exists($upload->destination_path)) {
-            throw ValidationException::withMessages([
-                'chunkit_upload_id' => 'The uploaded file could not be found. Upload it again.',
-            ]);
-        }
-
-        $target = $content->storageDirectory().'/'.basename($upload->destination_path);
-        $storage->deleteDirectory($content->storageDirectory()); // a replaced file goes away
-        $storage->move($upload->destination_path, $target);
-        $storage->deleteDirectory(dirname($upload->destination_path)); // the now-empty chunkit-done/{uuid}
+        $target = $content->storageDirectory().'/'.basename($file->path());
+        $file->disk->deleteDirectory($content->storageDirectory()); // a replaced file goes away
+        $file->disk->move($file->path(), $target);
 
         $content->forceFill([
-            'file_disk' => $disk,
+            'file_disk' => config('chunkit.final_disk'),
             'file_path' => $target,
-            'file_name' => $upload->original_name,
-            'file_size' => $upload->total_bytes,
-            'file_mime' => $storage->mimeType($target) ?: null, // the real type, not what the browser claimed
+            'file_name' => $file->upload->original_name,
+            'file_size' => $file->upload->total_bytes,
+            'file_mime' => $mime,
         ])->save();
 
-        $upload->delete();
+        $file->forget();
     }
 
     /** Removes the content's private folder (its uploaded file), if it has one. */

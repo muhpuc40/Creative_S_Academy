@@ -8,10 +8,13 @@ use App\Http\Controllers\Admin\Batch\Concerns\ManagesBatch;
 use App\Http\Controllers\Controller;
 use App\Models\Batch;
 use App\Models\BatchAssignment;
-use App\Support\Media;
+use App\Support\FinishedUpload;
+use App\Support\PrivateFile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class BatchAssignmentController extends Controller
 {
@@ -21,11 +24,13 @@ class BatchAssignmentController extends Controller
     {
         $data = $this->validated($request, $batch);
 
-        if ($request->hasFile('assignment_file')) {
-            $data['assignment_file'] = Media::store($request->file('assignment_file'), 'batch-assignment-files');
-        }
+        DB::transaction(function () use ($request, $batch, $data) {
+            if ($request->filled('chunkit_upload_id')) {
+                $data['assignment_file'] = $this->publish($request->input('chunkit_upload_id'));
+            }
 
-        $batch->assignments()->create($data);
+            $batch->assignments()->create($data);
+        });
 
         return $this->toBatch($batch, 'assignments', 'Assignment added.');
     }
@@ -33,13 +38,20 @@ class BatchAssignmentController extends Controller
     public function update(Request $request, BatchAssignment $assignment): RedirectResponse
     {
         $data = $this->validated($request, $assignment->batch, $assignment);
+        $old = $assignment->assignment_file;
 
-        if ($request->hasFile('assignment_file')) {
-            Media::delete($assignment->assignment_file);
-            $data['assignment_file'] = Media::store($request->file('assignment_file'), 'batch-assignment-files');
+        DB::transaction(function () use ($request, $assignment, &$data) {
+            if ($request->filled('chunkit_upload_id')) {
+                $data['assignment_file'] = $this->publish($request->input('chunkit_upload_id'));
+            }
+            // No new file uploaded: keep the current one.
+
+            $assignment->update($data);
+        });
+
+        if (isset($data['assignment_file'])) {
+            PrivateFile::delete($old); // replaced
         }
-
-        $assignment->update($data);
 
         return $this->toBatch($assignment->batch_list_id, 'assignments', 'Assignment updated.');
     }
@@ -48,10 +60,28 @@ class BatchAssignmentController extends Controller
     {
         $batchId = $assignment->batch_list_id;
 
-        Media::delete($assignment->assignment_file);
+        PrivateFile::delete($assignment->assignment_file);
         $assignment->delete();
 
         return $this->toBatch($batchId, 'assignments', 'Assignment deleted.');
+    }
+
+    /** GET batch-assignments/{assignment}/file: opens the assignment file (private, admins only). */
+    public function file(BatchAssignment $assignment): BinaryFileResponse
+    {
+        return PrivateFile::response($assignment->assignment_file, $assignment->title);
+    }
+
+    /**
+     * The assignment file is uploaded in chunks to chunkit; the form sends the finished upload's id.
+     * It must pass System > File types, then it is stored privately. Returns its path.
+     */
+    private function publish(string $uploadId): string
+    {
+        $file = FinishedUpload::take($uploadId);
+        $file->checkFileType();
+
+        return $file->storeIn('batch-assignment-files');
     }
 
     private function validated(Request $request, Batch $batch, ?BatchAssignment $assignment = null): array
@@ -71,17 +101,16 @@ class BatchAssignmentController extends Controller
             'assigned_at' => ['required', 'date'],
             'due_at' => ['required', 'date', 'after:assigned_at'],
             'total_marks' => ['required', 'integer', 'min:1', 'max:65535'],
-            'assignment_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,zip', 'max:10240'],
+            'chunkit_upload_id' => ['nullable', 'uuid'],
             'status' => ['required', Rule::enum(AssignmentStatus::class)],
         ], [
             'course_module_items_id.exists' => 'Choose an assignment item of this batch\'s course.',
             'course_module_items_id.unique' => 'This assignment is already given in this batch.',
             'due_at.after' => 'The due date must be after the assigned date.',
-            'assignment_file.max' => 'The assignment file must not be larger than 10 MB.',
         ]);
 
         $data['allow_late'] = $request->boolean('allow_late');
-        unset($data['assignment_file']);
+        unset($data['chunkit_upload_id']);
 
         return $data;
     }

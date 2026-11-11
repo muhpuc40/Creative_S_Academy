@@ -29,6 +29,8 @@ Route::get('courses/upload-resource', [CourseResourceController::class, 'index']
 Route::post('courses/upload-resource', [CourseResourceController::class, 'store'])->name('admin.library.resources.store');
 Route::put('courses/upload-resource/{resource}', [CourseResourceController::class, 'update'])->name('admin.library.resources.update');
 Route::delete('courses/upload-resource/{resource}', [CourseResourceController::class, 'destroy'])->name('admin.library.resources.destroy');
+// Opens a privately stored resource file (admins only).
+Route::get('courses/upload-resource/{resource}/file', [CourseResourceController::class, 'file'])->whereNumber('resource')->name('admin.library.resources.file');
 
 // Course: list, create, details, edit, delete
 Route::get('courses', [CourseController::class, 'index'])->name('admin.courses.index');

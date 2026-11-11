@@ -8,10 +8,11 @@ use App\Http\Controllers\Admin\Batch\Concerns\ManagesBatch;
 use App\Http\Controllers\Controller;
 use App\Models\Batch;
 use App\Models\BatchExam;
-use App\Support\Media;
+use App\Support\PrivateFile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class BatchExamController extends Controller
 {
@@ -22,7 +23,7 @@ class BatchExamController extends Controller
         $data = $this->validated($request, $batch);
 
         if ($request->hasFile('exam_paper')) {
-            $data['exam_paper'] = Media::store($request->file('exam_paper'), 'batch-exam-papers');
+            $data['exam_paper'] = PrivateFile::store($request->file('exam_paper'), 'batch-exam-papers');
         }
 
         $batch->exams()->create($data);
@@ -35,8 +36,8 @@ class BatchExamController extends Controller
         $data = $this->validated($request, $exam->batch, $exam);
 
         if ($request->hasFile('exam_paper')) {
-            Media::delete($exam->exam_paper);
-            $data['exam_paper'] = Media::store($request->file('exam_paper'), 'batch-exam-papers');
+            PrivateFile::delete($exam->exam_paper);
+            $data['exam_paper'] = PrivateFile::store($request->file('exam_paper'), 'batch-exam-papers');
         }
         // No new file uploaded: keep the current one (same behaviour as the content/resource library).
 
@@ -55,11 +56,17 @@ class BatchExamController extends Controller
         return $this->toBatch($exam->batch_list_id, 'exams', $published ? 'Result published.' : 'Result hidden again.');
     }
 
+    /** GET batch-exams/{exam}/paper: opens the exam paper (private, admins only). */
+    public function paper(BatchExam $exam): BinaryFileResponse
+    {
+        return PrivateFile::response($exam->exam_paper, $exam->title);
+    }
+
     public function destroy(BatchExam $exam): RedirectResponse
     {
         $batchId = $exam->batch_list_id;
 
-        Media::delete($exam->exam_paper);
+        PrivateFile::delete($exam->exam_paper);
         $exam->delete();
 
         return $this->toBatch($batchId, 'exams', 'Exam deleted.');

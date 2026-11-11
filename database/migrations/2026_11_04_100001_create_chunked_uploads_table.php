@@ -33,7 +33,10 @@ return new class extends Migration
                 ->default('pending');
             $table->string('destination_path', 1024)->nullable();
             $table->string('failure_reason', 500)->nullable();
-            $table->timestamp('expires_at');
+            // dateTime, not timestamp: on MariaDB/MySQL with explicit_defaults_for_timestamp=OFF (e.g. XAMPP)
+            // a NOT NULL timestamp silently gets ON UPDATE CURRENT_TIMESTAMP, so any update that does not
+            // set expires_at would reset it to "now" and the upload would count as expired at once.
+            $table->dateTime('expires_at');
             $table->timestamps();
 
             // Serves chunkit:prune, which looks for unfinished uploads past their expiry.

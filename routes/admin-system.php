@@ -2,6 +2,7 @@
 
 // Loaded from routes/web.php inside the admin group.
 
+use App\Http\Controllers\Admin\System\FileTypeController;
 use App\Http\Controllers\Admin\System\GoogleMeetController;
 use App\Http\Controllers\Admin\System\LogController;
 use App\Http\Controllers\Admin\System\ServerController;
@@ -30,3 +31,9 @@ Route::put('system/sms', [SmsSettingController::class, 'update'])->name('admin.s
 Route::get('system/sms/balance', [SmsSettingController::class, 'balance'])
     ->middleware('throttle:20,1')
     ->name('admin.sms-settings.balance');
+
+// Allowed upload formats (resource library, assignment files, email attachments), with a size limit per group
+Route::resource('system/file-types', FileTypeController::class)
+    ->only(['index', 'store', 'update', 'destroy'])
+    ->parameters(['file-types' => 'fileType'])
+    ->names('admin.file-types');

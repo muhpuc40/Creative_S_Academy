@@ -14,9 +14,9 @@
 @endphp
 
 <div x-data="{
-        open: false, mode: 'add', action: '', form: {},
-        show(mode, action, form) { this.mode = mode; this.action = action; this.form = form; this.open = true; },
-     }">
+        open: false, mode: 'add', action: '', form: {}, uploading: false,
+        show(mode, action, form) { this.mode = mode; this.action = action; this.form = form; this.$dispatch('uploader-reset'); this.open = true; },
+     }" @uploader-busy.window="uploading = $event.detail">
 
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p class="text-sm text-slate-500">Students see an assignment once it is Published. Closed assignments take no
@@ -91,7 +91,7 @@
 
     <x-admin.dialog show="open" close="open = false" title="mode === 'add' ? 'Add assignment' : 'Edit assignment'"
         max-width="max-w-xl">
-        <form method="POST" :action="action" enctype="multipart/form-data" class="space-y-4">
+        <form method="POST" :action="action" class="space-y-4">
             @csrf
             <input type="hidden" name="_modal" value="1">
             <input type="hidden" name="_method" value="PUT" :disabled="mode === 'add'">
@@ -121,15 +121,22 @@
                     <option value="{{ $status->value }}">{{ ucfirst($status->value) }}</option> @endforeach
                 </x-admin.select>
             </div>
-            <x-admin.input id="asg_file" name="assignment_file" type="file" accept=".pdf,.doc,.docx,.zip"
-                label="Assignment file"
-                hint="PDF, Word or ZIP, up to 10 MB. Edit: leave empty to keep the current file." />
+            @php($limits = \App\Models\FileType::limits())
+            @include('admin.partials.chunkit-uploader', [
+                'id' => 'asg_file',
+                'label' => 'Assignment file',
+                'accept' => implode(',', array_map(fn ($ext) => ".{$ext}", array_keys($limits))),
+                'hint' => 'Formats and sizes from System > File types. Edit: leave empty to keep the current file.',
+                'limits' => $limits,
+            ])
             <x-admin.checkbox id="asg_late" name="allow_late" label="Accept late submissions after the due time"
                 x-model="form.allow_late" />
 
             <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
                 <x-admin.button type="button" variant="secondary" @click="open = false">Cancel</x-admin.button>
-                <x-admin.button type="submit">Save assignment</x-admin.button>
+                <x-admin.button type="submit" ::disabled="uploading">
+                    <span x-text="uploading ? 'Wait for the upload…' : 'Save assignment'">Save assignment</span>
+                </x-admin.button>
             </div>
         </form>
     </x-admin.dialog>

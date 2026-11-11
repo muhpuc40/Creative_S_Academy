@@ -11,9 +11,14 @@ class CourseResource extends Model
 {
     protected $guarded = ['id'];
 
+    /** An external link as it is; an uploaded file through the admin-only route (it is private). */
     protected function fileUrl(): Attribute
     {
-        return Attribute::get(fn () => Media::url($this->url));
+        return Attribute::get(fn () => match (true) {
+            ! $this->url => null,
+            Media::isExternal($this->url) => $this->url,
+            default => route('admin.library.resources.file', $this),
+        });
     }
 
     public function items(): HasMany

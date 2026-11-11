@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\ExamStatus;
-use App\Support\Media;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,10 +30,10 @@ class BatchExam extends Model
         ];
     }
 
-    /** Link of the uploaded exam paper (or null). */
+    /** Link of the uploaded exam paper (or null). The file is private: admins only. */
     protected function examPaperUrl(): Attribute
     {
-        return Attribute::get(fn() => Media::url($this->exam_paper));
+        return Attribute::get(fn() => $this->exam_paper ? route('admin.batch-exams.paper', $this) : null);
     }
 
     public function batch(): BelongsTo
