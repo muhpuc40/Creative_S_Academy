@@ -152,6 +152,7 @@
                                 this.revokeErr = d.errors?.current_password?.[0] || d.errors?.device?.[0] || d.message || 'Please check your password.';
                                 return;
                             }
+                            if (r.status === 429) throw new Error('Too many attempts. Please wait a minute and try again.');
                             if (!r.ok) throw new Error('Request failed (' + r.status + ')');
                             document.getElementById('device-' + this.revokeId)?.remove();
                             this.revokeShow = false;

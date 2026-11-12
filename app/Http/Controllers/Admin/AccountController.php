@@ -97,8 +97,15 @@ class AccountController extends Controller
             'password' => ['required', 'confirmed', Password::min(8)],
         ]);
 
-        $request->user()->update(['password' => $request->input('password')]);
+        $admin = $request->user();
+        $admin->update(['password' => $request->input('password')]);
 
-        return response()->json(['ok' => true]);
+        // A new password should end every other session; this device stays signed in.
+        $others = $admin->devices()->active()
+            ->where('device_id', '!=', (string) $request->cookie('sf_device'))
+            ->get();
+        $others->each->revoke();
+
+        return response()->json(['ok' => true, 'signed_out' => $others->count()]);
     }
 }

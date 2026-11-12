@@ -63,7 +63,7 @@
                     </div>
 
                     <form @submit.prevent="save()" class="space-y-4 px-6 py-5">
-                        <div x-show="done" class="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">Password changed.</div>
+                        <div x-show="done" class="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700" x-text="doneText"></div>
 
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-slate-700">Current password</label>
@@ -104,6 +104,7 @@
                         show: false,
                         busy: false,
                         done: false,
+                        doneText: '',
                         errors: {},
                         form: { current_password: '', password: '', password_confirmation: '' },
 
@@ -127,9 +128,12 @@
                                     body: JSON.stringify(this.form),
                                 });
                                 if (r.status === 422) { this.errors = (await r.json()).errors || {}; return; }
+                                if (r.status === 429) throw new Error('Too many attempts. Please wait a minute and try again.');
                                 if (!r.ok) throw new Error('Request failed (' + r.status + ')');
+                                const n = (await r.json()).signed_out || 0;
+                                this.doneText = 'Password changed.' + (n ? ' ' + n + ' other device' + (n > 1 ? 's were' : ' was') + ' signed out.' : '');
                                 this.done = true;
-                                setTimeout(() => { this.show = false; }, 1200);
+                                setTimeout(() => { this.show = false; }, n ? 2500 : 1200);
                             } catch (e) {
                                 this.errors = { general: [e.message] };
                             } finally {

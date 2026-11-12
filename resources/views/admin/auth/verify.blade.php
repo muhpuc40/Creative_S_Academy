@@ -1,4 +1,11 @@
 <x-admin.guest title="Verify">
+    <div x-data="{
+            wait: {{ (int) $wait }},
+            init() {
+                if (this.wait <= 0) return;
+                const t = setInterval(() => { if (--this.wait <= 0) { this.wait = 0; clearInterval(t); } }, 1000);
+            },
+         }">
     <h1 class="text-lg font-semibold text-slate-900">Verify it's you</h1>
 
     @if ($revokeDevice)
@@ -30,8 +37,9 @@
             <form method="POST" action="{{ route('admin.login.send-code') }}">
                 @csrf
                 <input type="hidden" name="channel" value="{{ $channel }}">
-                <button type="submit" class="text-indigo-600 hover:underline disabled:text-slate-400 disabled:no-underline" @disabled($wait > 0)>
-                    Resend code @if ($wait > 0) (wait {{ $wait }}s) @endif
+                <button type="submit" class="text-indigo-600 hover:underline disabled:text-slate-400 disabled:no-underline"
+                        @disabled($wait > 0) :disabled="wait > 0">
+                    Resend code <span x-show="wait > 0">(wait <span x-text="wait">{{ $wait }}</span>s)</span>
                 </button>
             </form>
             <a href="{{ route('admin.login.verify', ['change' => 1]) }}" class="text-slate-500 hover:underline">Use another method</a>
@@ -51,9 +59,17 @@
                     </span>
                 </label>
             @endforeach
-            @error('channel') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+            {{-- the cooldown message counts down live; other channel errors show as-is --}}
+            @error('channel')
+                @unless (str_starts_with($message, 'Please wait'))
+                    <p class="text-xs text-red-600">{{ $message }}</p>
+                @endunless
+            @enderror
+            <p x-show="wait > 0" @if ($wait <= 0) style="display: none" @endif class="text-xs text-red-600">
+                Please wait <span x-text="wait">{{ $wait }}</span> seconds before requesting a new code.
+            </p>
 
-            <x-admin.button type="submit" class="mt-2 w-full">Send code</x-admin.button>
+            <x-admin.button type="submit" class="mt-2 w-full" x-bind:disabled="wait > 0">Send code</x-admin.button>
         </form>
     @endif
 
@@ -61,4 +77,5 @@
         @csrf
         <button type="submit" class="text-sm text-slate-500 hover:underline">Start over</button>
     </form>
+    </div>
 </x-admin.guest>
