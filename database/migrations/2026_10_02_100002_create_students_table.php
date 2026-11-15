@@ -23,7 +23,6 @@ return new class extends Migration {
             $table->string('gender', 10)->nullable();
             $table->string('address')->nullable();
             $table->timestamp('last_login_at')->nullable();
-            $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();
         });

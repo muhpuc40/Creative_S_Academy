@@ -20,7 +20,6 @@ return new class extends Migration {
             $table->string('avatar')->nullable();
             $table->string('status', 20)->default('active')->index();   // account: active | suspended (UserStatus)
             $table->timestamp('last_login_at')->nullable();
-            $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();
         });

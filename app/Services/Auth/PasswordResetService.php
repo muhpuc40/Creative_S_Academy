@@ -113,7 +113,6 @@ class PasswordResetService
             $user = $reset->user()->lockForUpdate()->first();
             if (!$this->currentUser($reset, $user)) { return $this->invalid(); }
             $user->password = $password; // Model's hashed cast hashes it once.
-            $user->remember_token = Str::random(60);
             $user->save();
             $user->devices()->get()->each->revoke();
             $user->tokens()->delete();

@@ -97,6 +97,16 @@ class AuthController extends Controller
             throw $e;
         }
 
+        // Known device: this device_id already signed in to this user before (active or logged out).
+        // The password is enough - skip the OTP step and issue the token now.
+        if ($user->devices()->where('device_id', $request->device_id)->exists()) {
+            return $this->completeLogin(
+                $request, $type, $user,
+                $request->only(['device_id', 'device_name', 'platform', 'browser']),
+                $revokeId, null, $devices
+            );
+        }
+
         $challengeId = $challenges->start(
             $type,
             $user->id,
@@ -107,6 +117,7 @@ class AuthController extends Controller
         );
 
         return response()->json([
+            'otp_required' => true,
             'challenge_id' => $challengeId,
             'expires_in' => LoginChallengeService::CHALLENGE_TTL,
             'options' => $challenges->options($user->email, $user->phone),
@@ -266,15 +277,26 @@ class AuthController extends Controller
             }
         }
 
+        $challenges->forget($request->challenge_id);
+
+        return $this->completeLogin($request, $type, $user, $challenge['device'], $challenge['revoke_device_id'], $challenge['channel'], $devices);
+    }
+
+    /**
+     * Final step shared by both paths (OTP verified, or a known device that skipped OTP):
+     * save the device, issue one token for it, log the success.
+     */
+    private function completeLogin(Request $request, string $type, $user, array $deviceData, ?int $revokeId, ?string $channel, RegisterDeviceAction $devices): JsonResponse
+    {
         // Replace the old device the user chose after the 409
-        if ($challenge['revoke_device_id']) {
-            $user->devices()->active()->find($challenge['revoke_device_id'])?->revoke();
+        if ($revokeId) {
+            $user->devices()->active()->find($revokeId)?->revoke();
         }
 
         try {
-            $device = $devices->register($user, $challenge['device'], $request);
+            $device = $devices->register($user, $deviceData, $request);
         } catch (HttpResponseException $e) {
-            $this->log($request, $type, $user, 'blocked', 'device_limit', $challenge['device']['device_id']);
+            $this->log($request, $type, $user, 'blocked', 'device_limit', $deviceData['device_id']);
             throw $e;
         }
 
@@ -286,16 +308,16 @@ class AuthController extends Controller
         $token = $user->createToken("{$type}:{$device->device_id}", [$type]);
         $device->update(['token_id' => $token->accessToken->id]);
         $user->last_login_at = now();
-        if (!$user->verified_at) {
+        if (!$user->verified_at && $channel) {
             $user->verified_at = now();
-            $user->verified_channel = $challenge['channel'];
+            $user->verified_channel = $channel;
         }
         $user->save();
 
-        $challenges->forget($request->challenge_id);
         $this->log($request, $type, $user, 'success', null, $device->device_id);
 
         return response()->json([
+            'otp_required' => false,
             'token' => $token->plainTextToken,
             'user_type' => $type,
             'user' => $user->only(['public_id', 'name', 'email', 'phone', 'avatar']),

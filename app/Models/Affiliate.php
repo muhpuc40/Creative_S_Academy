@@ -22,7 +22,7 @@ class Affiliate extends Authenticatable
         'name', 'email', 'phone', 'password', 'avatar', 'status', 'last_login_at',
     ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password'];
 
     protected function casts(): array
     {

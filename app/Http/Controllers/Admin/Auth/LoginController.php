@@ -45,7 +45,7 @@ class LoginController extends Controller
         return view('admin.auth.login');
     }
 
-    public function store(LoginRequest $request, LoginChallengeService $challenges): RedirectResponse
+    public function store(LoginRequest $request, LoginChallengeService $challenges, RegisterDeviceAction $devices): RedirectResponse
     {
         $login = trim($request->input('login'));
         $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
@@ -71,7 +71,16 @@ class LoginController extends Controller
             return back()->withErrors(['login' => 'Login is disabled: device policy is missing or zero.'])->onlyInput('login');
         }
 
-        $challengeId = $challenges->start('admin', $admin->id, $this->deviceFrom($request), null, null, $admin->password);
+        $device = $this->deviceFrom($request);
+
+        // Known device: this browser already signed in to this admin before (active or logged out).
+        // The password is enough - skip the OTP step. A new browser or a different admin gets no match.
+        if ($admin->devices()->where('device_id', $device['device_id'])->exists()
+            && $devices->hasSlot($admin, $device['device_id'])) {
+            return $this->completeLogin($request, $admin, $device, $request->boolean('remember'), null, null, $devices);
+        }
+
+        $challengeId = $challenges->start('admin', $admin->id, $device, null, null, $admin->password);
 
         $request->session()->put('admin_login', [
             'challenge_id' => $challengeId,
@@ -247,7 +256,19 @@ class LoginController extends Controller
             return redirect()->route('admin.login.devices');
         }
 
-        DB::transaction(function () use ($admin, $challenge, $revokeId, $device, $devices, $request) {
+        $remember = (bool) $request->session()->get('admin_login.remember');
+        $challenges->forget($challengeId);
+
+        return $this->completeLogin($request, $admin, $device, $remember, $revokeId, $challenge['channel'], $devices);
+    }
+
+    /**
+     * Final step shared by both paths (OTP verified, or a known device that skipped OTP):
+     * save the device, sign in, set the device cookie, log the success.
+     */
+    private function completeLogin(Request $request, Admin $admin, array $device, bool $remember, ?int $revokeId, ?string $channel, RegisterDeviceAction $devices): RedirectResponse
+    {
+        DB::transaction(function () use ($admin, $channel, $revokeId, $device, $devices, $request) {
             // Sign out the old device the admin chose
             if ($revokeId) {
                 $admin->devices()->active()->find($revokeId)?->revoke();
@@ -255,22 +276,18 @@ class LoginController extends Controller
 
             $devices->register($admin, $device, $request);
 
-            //  $admin->last_login_at = now();
             $admin->last_login_at = Carbon::now();
-            if (!$admin->verified_at) {
+            if (!$admin->verified_at && $channel) {
                 $admin->verified_at = Carbon::now();
-                $admin->verified_channel = $challenge['channel'];
+                $admin->verified_channel = $channel;
             }
 
             $admin->save();
         });
 
-        $remember = (bool) $request->session()->get('admin_login.remember');
-
         Auth::guard('web')->login($admin, $remember);
         $request->session()->regenerate();
         $request->session()->forget('admin_login');
-        $challenges->forget($challengeId);
         $this->queueDeviceCookie($device['device_id'], $request);
         $this->log($request, $admin, 'success', null, $device['device_id']);
 

@@ -21,7 +21,6 @@ return new class extends Migration {
             $table->text('bio')->nullable();
             $table->string('status', 20)->default('active')->index();
             $table->timestamp('last_login_at')->nullable();
-            $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();
         });
