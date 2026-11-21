@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
 // link the course API hands out (CourseContent::previewUrl()), and only until it expires.
 Route::get('media/content/{content}', ContentFileController::class)
     ->whereNumber('content')
-    ->middleware(['signed', 'throttle:120,1'])
+    ->middleware(['signed', 'throttle:120,1,content-preview'])
     ->name('content.preview');
 
 Route::middleware('guest')->group(function () {

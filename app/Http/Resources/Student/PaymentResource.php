@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources\Student;
 
-use App\Support\Media;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -19,7 +18,6 @@ class PaymentResource extends JsonResource
             'provider' => $this->provider,
             'sender_account' => $this->sender_account,
             'trx_id' => $this->trx_id,
-            'proof_image' => Media::url($this->proof_image),
             'amount' => $this->amount,
             'paid_at' => $this->paid_at?->toIso8601String(),
             'status' => $this->status->value,

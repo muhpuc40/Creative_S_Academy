@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AffiliateClickController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\DeviceController;
+use App\Http\Controllers\Api\EnrollmentController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PasswordResetController;
@@ -18,7 +19,9 @@ use App\Http\Middleware\TrackDeviceActivity;
 use Illuminate\Support\Facades\Route;
 
 
-Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
+// Every throttle here has its own name (3rd value): without one, all unnamed throttles share ONE counter
+// per IP (or per user), so public course pages would use up the 5-a-minute sign-up allowance.
+Route::prefix('v1')->middleware('throttle:120,1,public-api')->group(function () {
 
     Route::get('home', [HomeController::class, 'index']);
     Route::get('popups', [PopupController::class, 'index']);
@@ -33,7 +36,7 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
     Route::post('ref/{ref_code}/click', [AffiliateClickController::class, 'click']);
     Route::get('ref/attribution', [AffiliateClickController::class, 'attribution']);
 
-    // Where a student can send money - shown before they submit payment proof.
+    // Where a student can send money - shown on the pay page.
     Route::get('payment-accounts', [PaymentController::class, 'accounts']);
 });
 
@@ -41,7 +44,7 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
 // Sign-up (student or affiliate): 1. register  2. login/send-code  3. login/verify
 Route::post('v1/{type}/register', [AuthController::class, 'register'])
     ->where('type', 'student|affiliate')
-    ->middleware('throttle:5,1');
+    ->middleware('throttle:5,1,register');
 
 // /api/v1/{admin|student|instructor|affiliate}/
 Route::prefix('v1/{type}')->where(['type' => 'student|instructor|affiliate'])->group(function () {
@@ -73,4 +76,5 @@ Route::prefix('v1/{type}')->where(['type' => 'student'])
         Route::get('orders/{order}', [OrderController::class, 'show'])->whereNumber('order');
         Route::post('payments', [PaymentController::class, 'store']);
         Route::get('payments', [PaymentController::class, 'index']);
+        Route::get('enrollments', [EnrollmentController::class, 'index']); // "My courses"
     });

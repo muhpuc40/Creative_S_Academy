@@ -316,7 +316,7 @@ class CheckoutService
 
     private function nextOrderNo(): string
     {
-        $prefix = 'SF-' . now()->format('ym') . '-';
+        $prefix = 'CSA-' . now()->format('ym') . '-';
         $seq = Order::where('order_no', 'like', $prefix . '%')->count() + 1;
 
         do {

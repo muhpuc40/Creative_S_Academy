@@ -62,7 +62,7 @@ class Order extends Model
     }
 
     /**
-     * How long a new unpaid order (or one whose only proof was rejected) waits for a payment.
+     * How long a new unpaid order (or one whose only payment was rejected) waits for a payment.
      * After that the scheduled `orders:expire` command marks it expired - see
      * App\Console\Commands\ExpireUnpaidOrders, the one place orders expire.
      */

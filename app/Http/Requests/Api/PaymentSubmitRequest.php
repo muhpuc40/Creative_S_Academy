@@ -6,7 +6,7 @@ use App\Enums\PaymentMethod;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/** POST /api/v1/student/payments - proof of money sent for one or more dues of one order. */
+/** POST /api/v1/student/payments - details (TrxID etc.) of money sent for one or more dues of one order. */
 class PaymentSubmitRequest extends FormRequest
 {
     public function authorize(): bool
@@ -30,7 +30,6 @@ class PaymentSubmitRequest extends FormRequest
             'sender_account' => ['nullable', 'string', 'max:60'],
             // A reference the student types in: bKash/Nagad TrxID, or a bank reference number.
             'trx_id' => ['required_unless:method,cash', 'nullable', 'string', 'max:60'],
-            'proof_image' => ['required_unless:method,cash', 'nullable', 'image', 'max:4096'],
             'paid_at' => ['nullable', 'date'],
             'note' => ['nullable', 'string', 'max:500'],
         ];

@@ -10,7 +10,7 @@ use Illuminate\View\View;
 
 /**
  * Sales > Accounts: where students send money (bKash/Nagad number, bank account, cash).
- * Students see the active ones, in sort_order, before they submit payment proof.
+ * Students see the active ones, in sort_order, on the pay page.
  *
  * An account that has received payments is never deleted, only hidden: every payment row
  * remembers which of our accounts it went to (payment_list.payment_account_id), and the

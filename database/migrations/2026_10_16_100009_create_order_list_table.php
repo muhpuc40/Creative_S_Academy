@@ -10,7 +10,7 @@ return new class extends Migration {
         // One checkout. It can hold one or many courses (order_items). Never deleted: cancel it.
         Schema::create('order_list', function (Blueprint $table) {
             $table->id();
-            $table->string('order_no', 30)->unique();                      // shown to the student: SF-2610-0001
+            $table->string('order_no', 30)->unique();                      // shown to the student: CSA-2610-0001
             $table->foreignId('student_id')->constrained('students')->restrictOnDelete();
             $table->foreignId('affiliate_attribution_id')->nullable()->constrained('affiliate_attributions')->nullOnDelete();
             $table->foreignId('payment_combo_id')->nullable()->constrained('payment_combos')->nullOnDelete();

@@ -4,8 +4,6 @@ namespace App\Models;
 
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
-use App\Support\Media;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -29,12 +27,6 @@ class Payment extends Model
             'paid_at' => 'datetime',
             'verified_at' => 'datetime',
         ];
-    }
-
-    /** Link of the uploaded proof image (or null). */
-    protected function proofImageUrl(): Attribute
-    {
-        return Attribute::get(fn () => Media::url($this->proof_image));
     }
 
     public function order(): BelongsTo

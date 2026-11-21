@@ -9,7 +9,7 @@ Route::prefix('account')->name('admin.account.')->group(function () {
     Route::get('devices', [AccountController::class, 'devices'])->name('devices');
 
     // Writes — rate limited (6 per minute) so the current-password checks can't be brute-forced
-    Route::middleware('throttle:6,1')->group(function () {
+    Route::middleware('throttle:6,1,admin-account')->group(function () {
         Route::put('profile', [AccountController::class, 'updateProfile'])->name('profile.update');
         Route::post('devices/revoke', [AccountController::class, 'revokeDevice'])->name('devices.revoke');
         Route::put('password', [AccountController::class, 'updatePassword'])->name('password');

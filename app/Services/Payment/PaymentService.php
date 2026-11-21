@@ -31,7 +31,7 @@ class PaymentService
     }
 
     /**
-     * Student submits proof of a payment. Reserves the selected dues (unpaid -> pending) against
+     * Student submits the details (TrxID etc.) of a payment. Reserves the selected dues (unpaid -> pending) against
      * this one payment_list row so they can't also be claimed by a second submission while this
      * one is awaiting review.
      */
@@ -91,7 +91,6 @@ class PaymentService
                 'provider' => $data['provider'] ?? null,
                 'sender_account' => $data['sender_account'] ?? null,
                 'trx_id' => $data['trx_id'] ?? null,
-                'proof_image' => $data['proof_image'] ?? null,
                 'amount' => $submitted,
                 'paid_at' => $data['paid_at'] ?? now(),
                 'status' => PaymentStatus::Pending,
@@ -219,9 +218,9 @@ class PaymentService
                 'payment_id' => null,
             ]);
 
-            // The proof may have sat in the admin queue past the order's 24h window. A student who
+            // The payment may have sat in the admin queue past the order's 24h window. A student who
             // genuinely paid (and only mistyped the TrxID, say) gets a fresh window to resubmit -
-            // otherwise orders:expire would expire the order on its next run (no proof is waiting
+            // otherwise orders:expire would expire the order on its next run (no payment is waiting
             // any more) and they'd have to check out all over again.
             $order = Order::lockForUpdate()->find($payment->order_list_id);
             if ($order && $order->status === OrderStatus::Pending && $order->expires_at && $order->expires_at->isPast()) {

@@ -1,5 +1,5 @@
 <x-admin.layout title="Payments">
-    <x-admin.page-header title="Payments" description="Proof of payment submitted by students, waiting for (or already given) verification." />
+    <x-admin.page-header title="Payments" description="Payments submitted by students (TrxID), waiting for (or already given) verification." />
 
     <form method="GET" action="{{ route('admin.payments.index') }}" class="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_12rem_auto]">
         <input type="search" name="q" value="{{ request('q') }}" placeholder="Search by order no, student or TrxID..."

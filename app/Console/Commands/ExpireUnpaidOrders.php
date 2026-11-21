@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  *
  * A pending order whose payment window (Order::PAYMENT_WINDOW_HOURS after checkout) has
  * passed becomes "expired", which frees its batch seats and gives back its voucher - unless
- * a payment proof for it is still waiting for admin review: that student clearly paid, so a
+ * a submitted payment for it is still waiting for admin review: that student clearly paid, so a
  * slow admin queue must never cancel the order under them.
  *
  * Partially paid / paid orders are never touched: once money is verified an order is kept.

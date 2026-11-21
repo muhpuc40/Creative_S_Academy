@@ -8,7 +8,7 @@ use App\Http\Controllers\Admin\Sales\PaymentVerificationController;
 use App\Http\Controllers\Admin\Sales\PaymentVoucherController;
 use Illuminate\Support\Facades\Route;
 
-// Payments: student-submitted proof, awaiting (or already given) admin verification
+// Payments: submitted by students (TrxID etc.), awaiting (or already given) admin verification
 Route::get('payments', [PaymentVerificationController::class, 'index'])->name('admin.payments.index');
 Route::get('payments/{payment}', [PaymentVerificationController::class, 'show'])->whereNumber('payment')->name('admin.payments.show');
 Route::patch('payments/{payment}/verify', [PaymentVerificationController::class, 'verify'])->whereNumber('payment')->name('admin.payments.verify');

@@ -73,14 +73,6 @@
                     </tfoot>
                 </table>
             </x-admin.card>
-
-            @if ($payment->proof_image_url)
-                <x-admin.card title="Proof submitted">
-                    <a href="{{ $payment->proof_image_url }}" target="_blank" rel="noopener">
-                        <img src="{{ $payment->proof_image_url }}" alt="Payment proof" class="max-h-96 rounded-lg ring-1 ring-slate-200">
-                    </a>
-                </x-admin.card>
-            @endif
         </div>
 
         <div class="space-y-6">

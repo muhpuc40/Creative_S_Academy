@@ -17,7 +17,6 @@ return new class extends Migration {
             $table->string('provider', 60)->nullable();                    // bkash / nagad / rocket, or the bank name
             $table->string('sender_account', 60)->nullable();              // student's MFS number or bank account
             $table->string('trx_id', 60)->nullable();                      // TrxID, bank reference or cash receipt no. Checked in code: no reuse.
-            $table->string('proof_image')->nullable();
             $table->decimal('amount', 12, 2);
             $table->timestamp('paid_at')->nullable();                      // time the student says he paid
             $table->string('status', 20)->default('pending');              // pending | verified | rejected

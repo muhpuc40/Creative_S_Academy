@@ -23,14 +23,14 @@ Route::get('system/google-meet/connect', [GoogleMeetController::class, 'connect'
 Route::get('system/google-meet/callback', [GoogleMeetController::class, 'callback'])->name('admin.google-meet.callback');
 Route::delete('system/google-meet', [GoogleMeetController::class, 'disconnect'])->name('admin.google-meet.disconnect');
 Route::post('system/google-meet/link', [GoogleMeetController::class, 'link'])
-    ->middleware('throttle:20,1')
+    ->middleware('throttle:20,1,google-meet-link') // named: unnamed throttles share one counter per admin
     ->name('admin.google-meet.link');
 
 // SMS gateway settings (API key, sender ID, rate...): saved in the database, no redeploy
 Route::get('system/sms', [SmsSettingController::class, 'edit'])->name('admin.sms-settings.edit');
 Route::put('system/sms', [SmsSettingController::class, 'update'])->name('admin.sms-settings.update');
 Route::get('system/sms/balance', [SmsSettingController::class, 'balance'])
-    ->middleware('throttle:20,1')
+    ->middleware('throttle:20,1,sms-balance')
     ->name('admin.sms-settings.balance');
 
 // Allowed upload formats (resource library, assignment files, email attachments), with a size limit per group

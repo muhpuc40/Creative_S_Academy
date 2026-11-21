@@ -36,7 +36,7 @@ class PaymentVerificationController extends Controller
         ]);
     }
 
-    /** GET /payments/{payment} - full detail: proof, which dues it covers, the order they sit in. */
+    /** GET /payments/{payment} - full detail: TrxID, which dues it covers, the order they sit in. */
     public function show(Payment $payment): View
     {
         $payment->load([
