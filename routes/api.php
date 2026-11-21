@@ -73,7 +73,8 @@ Route::prefix('v1/{type}')->where(['type' => 'student'])
         Route::post('checkout/quote', [CheckoutController::class, 'quote']);
         Route::post('checkout/order', [CheckoutController::class, 'store']);
         Route::get('orders', [OrderController::class, 'index']);
-        Route::get('orders/{order}', [OrderController::class, 'show'])->whereNumber('order');
+        // by order number (CSA-2611-0001), never by the database id
+        Route::get('orders/{orderNo}', [OrderController::class, 'show'])->where('orderNo', '[A-Za-z0-9-]{1,30}');
         Route::post('payments', [PaymentController::class, 'store']);
         Route::get('payments', [PaymentController::class, 'index']);
         Route::get('enrollments', [EnrollmentController::class, 'index']); // "My courses"
