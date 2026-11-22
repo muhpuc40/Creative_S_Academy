@@ -14,12 +14,10 @@ use Illuminate\Database\Seeder;
  * Batches, class schedule, exams and assignments (run CourseDemoSeeder first).
  *   php artisan db:seed --class=BatchDemoSeeder
  *
- * Batch scenarios (d = days from today):
- *  upcoming + open + seats | upcoming + unlimited seats | upcoming + only 5 seats
- *  running, deadline passed but EXTENDED deadline still open
- *  running, deadline passed -> closed | upcoming with no deadline (always open)
- *  upcoming but deadline passed -> closed | completed | cancelled
- *  inactive (hidden) | soft deleted (hidden)
+ * One batch per course (d = days from today):
+ *  full-stack-web-development  running, no deadline -> always open (has held classes)
+ *  flutter-app-development     upcoming, deadline in 10 days, 20 seats
+ *  python-for-data-science     upcoming, no seat limit
  */
 class BatchDemoSeeder extends Seeder
 {
@@ -40,37 +38,9 @@ class BatchDemoSeeder extends Seeder
 
         // slug => [ [status, start d, end d, deadline d|null, extended d|null, seats|null, extra] ... ]
         $plan = [
-            'full-stack-web-development' => [
-                ['completed', -200, -40, -210, null, 40, []],
-                ['running',    -21,  120, -14,  7,   40, []],                    // deadline passed, extended -> open
-                ['upcoming',    21,  180, 14,  null, 30, []],
-                ['upcoming',    56,  220, 45,  null, null, []],                  // unlimited seats
-                ['cancelled',   30,  150, 20,  null, 30, []],
-                ['upcoming',    40,  200, 30,  null, 30, ['is_active' => false]],
-                ['upcoming',    70,  230, 60,  null, 30, ['deleted' => true]],
-            ],
-            'laravel-for-beginners' => [
-                ['upcoming',  10, 100, 5,  null, 25, []],
-                ['upcoming',   2,  90, -1, null, 25, []],                        // closed: deadline passed
-            ],
-            'react-nextjs-mastery' => [
-                ['running',  -10, 100, null, null, 35, []],                      // no deadline -> always open
-                ['upcoming',  30, 130, 20,  null, 35, []],
-            ],
+            'full-stack-web-development' => [['running', -10, 120, null, null, 40, []]],
             'flutter-app-development' => [['upcoming', 15, 120, 10, null, 20, []]],
-            'python-for-data-science' => [
-                ['running',  -7, 90, -2, 5, 30, []],
-                ['upcoming', 35, 130, 28, null, 30, []],
-            ],
-            'machine-learning-foundations' => [                                  // no open batch
-                ['completed', -150, -30, -160, null, 25, []],
-                ['cancelled',   20, 120, 10,  null, 25, []],
-            ],
-            'photoshop-masterclass' => [['upcoming', 12, 70, 8, null, 5, []]],   // only 5 seats
-            'ui-ux-design-with-figma' => [['upcoming', 25, 100, 18, null, 30, []]],
-            'digital-marketing-essentials' => [['upcoming', 14, 80, 10, null, null, []]],
-            'brand-identity-design' => [['upcoming', 20, 100, 15, null, 30, []]],   // course is draft
-            'wordpress-development' => [['upcoming', 20, 100, 15, null, 30, []]],   // course inactive
+            'python-for-data-science' => [['upcoming', 21, 110, 14, null, null, []]],
         ];
 
         foreach ($plan as $slug => $batches) {

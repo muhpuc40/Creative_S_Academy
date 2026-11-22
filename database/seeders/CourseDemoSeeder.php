@@ -13,25 +13,13 @@ use App\Models\Student;
 use Illuminate\Database\Seeder;
 
 /**
- * Sample courses covering many cases (php artisan db:seed --class=CourseDemoSeeder).
+ * Three sample courses, one per category (php artisan db:seed --class=CourseDemoSeeder).
+ * Each course: 2 stages x 2 modules, 2 videos + 1 notes link per module
+ * (8 videos and 4 resource links, under the limit of 10 each).
  *
- * Scenario map (slug -> what it tests):
- *  full-stack-web-development   published, 20% discount, price history, 3 installments, 3 stages
- *  laravel-for-beginners        published, no discount, full payment (no installments)
- *  react-nextjs-mastery         published, flat discount, flat installments
- *  flutter-app-development      published, 10% discount, price history, 2 installments
- *  python-for-data-science      published, no discount
- *  machine-learning-foundations published, every batch is finished -> no open batch
- *  photoshop-masterclass        published, flat discount, only 5 seats
- *  ui-ux-design-with-figma      published, NO price yet, no thumbnail
- *  digital-marketing-essentials published, FREE course (price 0)
- *  nodejs-api-development       published, has no batch at all
- *  brand-identity-design        draft                 -> hidden from the API
- *  advanced-seo                 archived              -> hidden from the API
- *  wordpress-development        published but inactive -> hidden from the API
- *  ethical-hacking              draft only category   -> category hidden from the API
- *  old-video-editing            soft deleted          -> hidden everywhere
- *  category "Career Skills" has no course            -> hidden from the API
+ *  full-stack-web-development  Web Development, 20% discount, price history, 3 installments
+ *  flutter-app-development     Mobile App, flat discount, 2 installments
+ *  python-for-data-science     Data Science & AI, no discount, full payment
  */
 class CourseDemoSeeder extends Seeder
 {
@@ -42,36 +30,17 @@ class CourseDemoSeeder extends Seeder
         }
 
         $cat = [];
-        foreach ([
-            'web-development' => 'Web Development', 'mobile-app' => 'Mobile App', 'data-science-ai' => 'Data Science & AI',
-            'graphic-design' => 'Design', 'digital-marketing' => 'Digital Marketing',
-            'cyber-security' => 'Cyber Security', 'career-skills' => 'Career Skills',
-        ] as $slug => $name) {
+        foreach (['web-development' => 'Web Development', 'mobile-app' => 'Mobile App', 'data-science-ai' => 'Data Science & AI'] as $slug => $name) {
             $cat[$slug] = CourseCategory::create(['slug' => $slug, 'name' => $name, 'description' => "{$name} courses"]);
         }
 
-        $web3 = ['Beginning' => ['HTML Basics', 'CSS Styling', 'JavaScript Basics'],
-                 'Intermediate' => ['PHP & MySQL', 'Laravel Framework', 'REST API'],
-                 'Advanced' => ['React Frontend', 'Deployment']];
         $two = fn (string $a, string $b, string $c, string $d) => ['Beginning' => [$a, $b], 'Intermediate' => [$c, $d]];
 
-        //            category           title                           slug                          level      status       active  price  dType      dVal  oldPrice plan     thumbnail  stages
+        //            category           title                        slug                         level      status       active  price  dType      dVal  oldPrice plan     thumbnail  stages
         $courses = [
-            ['web-development',  'Full Stack Web Development',  'full-stack-web-development',  'Offline', 'published', true,  12000, 'percent', 20, 15000, 'three', true, $web3],
-            ['web-development',  'Laravel for Beginners',        'laravel-for-beginners',       'Online',  'published', true,  6000,  null,      0,  null,  'full',  true, $two('PHP Basics', 'OOP in PHP', 'Laravel Routing', 'Eloquent ORM')],
-            ['web-development',  'React & Next.js Mastery',      'react-nextjs-mastery',        'Online',  'published', true,  9000,  'flat',    1000, null, 'flat',  true, $two('React Basics', 'Hooks & State', 'Next.js Pages', 'Next.js API')],
-            ['mobile-app',       'Flutter App Development',      'flutter-app-development',     'Offline', 'published', true,  10000, 'percent', 10, 11000, 'two',   true, $two('Dart Language', 'Flutter Widgets', 'State Management', 'Publish to Play Store')],
-            ['data-science-ai',  'Python for Data Science',      'python-for-data-science',     'Online',  'published', true,  8000,  null,      0,  null,  'two',   true, $two('Python Basics', 'NumPy & Pandas', 'Data Visualization', 'Mini Project')],
-            ['data-science-ai',  'Machine Learning Foundations', 'machine-learning-foundations','Online',  'published', true,  14000, 'percent', 25, null,  'three', true, $two('Statistics', 'Linear Models', 'Classification', 'Model Deployment')],
-            ['graphic-design',   'Photoshop Masterclass',        'photoshop-masterclass',       'Offline', 'published', true,  4500,  'flat',    500, null,  'full',  true, $two('Photoshop Tools', 'Photo Editing', 'Retouching', 'Social Media Posts')],
-            ['graphic-design',   'UI/UX Design with Figma',      'ui-ux-design-with-figma',     'Online',  'published', true,  null,  null,      0,  null,  'none',  false, $two('Design Basics', 'Figma Tools', 'Wireframing', 'Prototype')],
-            ['digital-marketing','Digital Marketing Essentials', 'digital-marketing-essentials','Online',  'published', true,  0,     null,      0,  null,  'full',  true, $two('Marketing Basics', 'Facebook Ads', 'Google Ads', 'Analytics')],
-            ['web-development',  'Node.js API Development',      'nodejs-api-development',      'Online',  'published', true,  7000,  null,      0,  null,  'two',   true, $two('Node Basics', 'Express', 'MongoDB', 'Authentication')],
-            ['graphic-design',   'Brand Identity Design',        'brand-identity-design',       'Online',  'draft',     true,  8000,  null,      0,  null,  'two',   true, $two('Logo Basics', 'Color Theory', 'Brand Guide', 'Mockups')],
-            ['digital-marketing','Advanced SEO',                 'advanced-seo',                'Online',  'archived',  true,  5000,  null,      0,  null,  'full',  true, $two('On-page SEO', 'Technical SEO', 'Link Building', 'SEO Audit')],
-            ['web-development',  'WordPress Development',        'wordpress-development',       'Online',  'published', false, 5500,  null,      0,  null,  'full',  false, $two('WP Basics', 'Themes', 'Plugins', 'WooCommerce')],
-            ['cyber-security',   'Ethical Hacking',              'ethical-hacking',             'Online',  'draft',     true,  9500,  null,      0,  null,  'two',   true, $two('Networking', 'Kali Linux', 'Web Attacks', 'Reporting')],
-            ['graphic-design',   'Old Video Editing',            'old-video-editing',           'Offline', 'published', true,  3000,  null,      0,  null,  'full',  true, $two('Premiere Basics', 'Cutting', 'Color', 'Export')],
+            ['web-development', 'Full Stack Web Development', 'full-stack-web-development', 'Offline', 'published', true, 12000, 'percent', 20,  15000, 'three', true, $two('HTML & CSS', 'JavaScript Basics', 'Laravel Framework', 'React Frontend')],
+            ['mobile-app',      'Flutter App Development',    'flutter-app-development',    'Online',  'published', true, 10000, 'flat',    1000, null,  'two',   true, $two('Dart Language', 'Flutter Widgets', 'State Management', 'Publish to Play Store')],
+            ['data-science-ai', 'Python for Data Science',    'python-for-data-science',    'Online',  'published', true, 8000,  null,      0,    null,  'full',  true, $two('Python Basics', 'NumPy & Pandas', 'Data Visualization', 'Mini Project')],
         ];
 
         foreach ($courses as [$catSlug, $title, $slug, $level, $status, $active, $price, $dType, $dValue, $oldPrice, $plan, $thumb, $stages]) {
@@ -98,7 +67,7 @@ class CourseDemoSeeder extends Seeder
             }
 
             foreach (['Build real projects', 'Understand the core concepts', 'Work with real tools', 'Be ready for a job or freelancing'] as $i => $t) {
-                $course->learningOutcomes()->create(['title' => $t, 'sort_order' => $i + 1, 'is_active' => $i < 3 || $slug !== 'laravel-for-beginners']);
+                $course->learningOutcomes()->create(['title' => $t, 'sort_order' => $i + 1, 'is_active' => true]);
             }
             $course->learningOutcomes()->create(['title' => 'Hidden outcome (inactive)', 'sort_order' => 9, 'is_active' => false]);
 
@@ -106,8 +75,6 @@ class CourseDemoSeeder extends Seeder
             $course->faqs()->create(['question' => 'Will I get a certificate?', 'answer' => 'Yes, after you finish the course.', 'sort_order' => 2]);
             $course->faqs()->create(['question' => 'Hidden question (inactive)', 'answer' => 'This FAQ is switched off.', 'sort_order' => 3, 'is_active' => false]);
         }
-
-        Course::where('slug', 'old-video-editing')->first()?->delete();
 
         $this->reviews();
     }
@@ -192,12 +159,9 @@ class CourseDemoSeeder extends Seeder
         $comments = ['Very clear teaching.', 'Great course, worth the money.', 'Good, but I wanted more projects.', 'The live classes helped a lot.', 'Excellent support from the instructor.'];
         // slug => ratings of approved reviews
         $plan = [
-            'full-stack-web-development' => [5, 5, 4, 5, 4, 3],
-            'laravel-for-beginners' => [5, 4, 4],
-            'react-nextjs-mastery' => [4, 5],
-            'flutter-app-development' => [5],
+            'full-stack-web-development' => [5, 5, 4, 3],
+            'flutter-app-development' => [5, 4],
             'python-for-data-science' => [4, 3],
-            'machine-learning-foundations' => [5, 4, 4, 5],
         ];
 
         foreach ($plan as $slug => $ratings) {
