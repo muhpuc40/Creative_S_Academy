@@ -9,7 +9,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(UserTypeDeviceLimitSeeder::class);
-
+        $this->call(FileTypeSeeder::class);
 
         if (app()->environment('local')) {
             $this->call(DemoUsersSeeder::class);
