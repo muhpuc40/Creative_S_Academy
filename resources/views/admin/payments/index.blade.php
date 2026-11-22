@@ -30,7 +30,6 @@
                 <x-slot:head>
                     <th>Student</th>
                     <th>Order</th>
-                    <th>For</th>
                     <th>Method</th>
                     <th>Amount</th>
                     <th>Status</th>
@@ -46,10 +45,7 @@
                             <p class="font-medium text-slate-900">{{ $payment->student->name }}</p>
                             <p class="text-xs text-slate-500">{{ $payment->student->email }}</p>
                         </td>
-                        <td class="text-slate-500">{{ $payment->order->order_no }}</td>
-                        <td class="text-xs text-slate-500">
-                            {{ $payment->installments->pluck('item.course.title')->unique()->filter()->join(', ') }}
-                        </td>
+                        <td class="whitespace-nowrap"><a href="{{ route('admin.orders.show', $payment->order) }}" class="text-indigo-600 hover:text-indigo-500">{{ $payment->order->order_no }}</a></td>
                         <td class="uppercase text-slate-500">{{ $payment->method->value }}</td>
                         <td class="font-medium text-slate-900">Tk {{ number_format((float) $payment->amount) }}</td>
                         <td><x-admin.badge :color="$color">{{ ucfirst($payment->status->value) }}</x-admin.badge></td>

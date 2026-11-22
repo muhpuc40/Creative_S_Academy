@@ -18,7 +18,7 @@ class PaymentVerificationController extends Controller
         $filter = $request->input('status', 'pending');
 
         $payments = Payment::query()
-            ->with(['student:id,name,email', 'order:id,order_no', 'installments.item.course:id,title'])
+            ->with(['student:id,name,email', 'order:id,order_no'])
             ->when($request->filled('q'), function ($q) use ($request) {
                 $term = '%'.$request->input('q').'%';
                 $q->where(fn ($w) => $w->where('trx_id', 'like', $term)

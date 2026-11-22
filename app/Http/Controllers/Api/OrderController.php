@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Student\OrderResource;
 use Illuminate\Http\JsonResponse;
@@ -9,10 +10,15 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-    /** GET /api/v1/student/orders - the authenticated student's own orders, newest first. */
+    /**
+     * GET /api/v1/student/orders - the authenticated student's own orders, newest first.
+     * Expired orders (never paid, seat released) are left out: there is nothing to do with them.
+     * The order page itself (show) still opens them, so an old link explains what happened.
+     */
     public function index(Request $request): JsonResponse
     {
         $orders = $request->user()->orders()
+            ->where('status', '!=', OrderStatus::Expired)
             ->with(['items.course:id,title,thumbnail', 'items.batch:id,name', 'items.installments'])
             ->latest('id')
             ->paginate(15);

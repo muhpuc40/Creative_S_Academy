@@ -1,36 +1,47 @@
 @php
     $color = ['pending' => 'amber', 'verified' => 'green', 'rejected' => 'red'][$payment->status->value];
+    $tk = fn ($amount) => 'Tk '.number_format((float) $amount, (float) $amount == (int) $amount ? 0 : 2);
+    $pending = $payment->status->value === 'pending';
+    $method = $payment->provider ?: ['mfs' => 'Mobile banking', 'bank' => 'Bank transfer', 'cash' => 'Cash'][$payment->method->value] ?? strtoupper($payment->method->value);
+    $order = $payment->order;
 @endphp
 <x-admin.layout title="Payment #{{ $payment->id }}">
-    <div class="mb-6 flex items-center justify-between">
+    {{-- header + actions --}}
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
             <a href="{{ route('admin.payments.index') }}" class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
                 <x-admin.icon name="arrow-left" class="size-4" /> Back to payments
             </a>
-            <h1 class="mt-1 text-xl font-semibold text-slate-900">
-                Payment #{{ $payment->id }}
+            <div class="mt-1 flex flex-wrap items-center gap-3">
+                <h1 class="text-2xl font-semibold text-slate-900">Payment #{{ $payment->id }}</h1>
                 <x-admin.badge :color="$color">{{ ucfirst($payment->status->value) }}</x-admin.badge>
-            </h1>
+            </div>
+            <p class="mt-1 text-sm text-slate-500">
+                Submitted {{ $payment->created_at->format('d M Y, h:i A') }} by {{ $payment->student?->name ?? 'a student' }}
+                for order <a href="{{ route('admin.orders.show', $order) }}" class="font-medium text-indigo-600 hover:text-indigo-500">{{ $order->order_no }}</a>
+            </p>
         </div>
 
-        @if ($payment->status->value === 'pending')
+        @if ($pending)
             <div class="flex gap-2">
                 <form method="POST" action="{{ route('admin.payments.verify', $payment) }}" onsubmit="return confirm('Verify this payment? The dues it covers will be marked paid.')">
                     @csrf
                     @method('PATCH')
-                    <x-admin.button type="submit">Verify</x-admin.button>
+                    <x-admin.button type="submit"><x-admin.icon name="check" class="size-4" /> Verify</x-admin.button>
                 </form>
-                <x-admin.button type="button" variant="danger" onclick="document.getElementById('reject-form').classList.toggle('hidden')">Reject</x-admin.button>
+                <x-admin.button type="button" variant="danger" onclick="document.getElementById('reject-form').classList.toggle('hidden')">
+                    <x-admin.icon name="x" class="size-4" /> Reject
+                </x-admin.button>
             </div>
         @endif
     </div>
 
-    @if ($payment->status->value === 'pending')
+    @if ($pending)
         <form id="reject-form" method="POST" action="{{ route('admin.payments.reject', $payment) }}" class="mb-6 hidden">
             @csrf
             @method('PATCH')
             <x-admin.card title="Reject this payment">
-                <label class="mb-1 block text-sm font-medium text-slate-700">Reason</label>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Reason (the student sees this)</label>
                 <textarea name="reason" rows="2" required maxlength="255"
                           class="block w-full rounded-lg border-0 bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600"
                           placeholder="e.g. TrxID doesn't match our statement"></textarea>
@@ -45,75 +56,76 @@
         </div>
     @endif
 
+    {{-- what to match against the statement --}}
+    <div class="mb-6 grid gap-4 sm:grid-cols-3">
+        <x-admin.stat-card label="Amount" :value="$tk($payment->amount)" icon="credit-card" />
+        <x-admin.stat-card label="TrxID" :value="$payment->trx_id ?? '—'" icon="file" :hint="$payment->method->value === 'cash' ? 'Cash payment' : null" />
+        <x-admin.stat-card label="Paid with" :value="$method" icon="wallet" :hint="$payment->sender_account ? 'From '.$payment->sender_account : null" />
+    </div>
+
     <div class="grid gap-6 lg:grid-cols-3">
+        {{-- main: the transaction, then what it pays for --}}
         <div class="space-y-6 lg:col-span-2">
-            <x-admin.card title="What this payment covers">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-left text-xs uppercase tracking-wide text-slate-400">
-                            <th class="pb-2">Course</th>
-                            <th class="pb-2">Due</th>
-                            <th class="pb-2 text-right">Amount</th>
+            <x-admin.card title="Transaction">
+                {{-- amount and TrxID are in the cards above --}}
+                <div class="grid gap-x-10 md:grid-cols-2">
+                    <x-admin.info-list :items="[
+                        'Method' => $method,
+                        'Sent from' => $payment->sender_account,
+                        'To our account' => $payment->account ? trim(($payment->account->provider ?? '').' '.($payment->account->account_no ?? '')) : null,
+                    ]" />
+                    <x-admin.info-list :items="[
+                        'Paid at' => $payment->paid_at?->format('d M Y, h:i A'),
+                        'Submitted' => $payment->created_at->format('d M Y, h:i A'),
+                        ($payment->status->value === 'rejected' ? 'Rejected by' : 'Verified by') => $payment->verifier ? $payment->verifier->name.($payment->verified_at ? ' · '.$payment->verified_at->format('d M Y, h:i A') : '') : null,
+                    ]" />
+                </div>
+                @if ($payment->note)
+                    <p class="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600"><span class="font-medium text-slate-700">Student's note:</span> {{ $payment->note }}</p>
+                @endif
+            </x-admin.card>
+
+            <x-admin.card title="What this payment covers" :padded="false">
+                <x-admin.table>
+                    <x-slot:head>
+                        <th>Course</th>
+                        <th>Batch</th>
+                        <th>Due</th>
+                        <th class="text-right">Amount</th>
+                    </x-slot:head>
+                    @foreach ($payment->installments as $inst)
+                        <tr>
+                            <td class="font-medium text-slate-900">{{ $inst->item?->course?->title ?? '—' }}</td>
+                            <td class="text-slate-500">{{ $inst->item?->batch?->name ?? '—' }}</td>
+                            <td class="text-slate-500">{{ $inst->title }}</td>
+                            <td class="text-right font-medium text-slate-900">{{ $tk($inst->amount) }}</td>
                         </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach ($payment->installments as $inst)
-                            <tr>
-                                <td class="py-2 text-slate-900">{{ $inst->item?->course?->title ?? '—' }}</td>
-                                <td class="py-2 text-slate-500">{{ $inst->title }}</td>
-                                <td class="py-2 text-right font-medium text-slate-900">Tk {{ number_format((float) $inst->amount) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                    <tfoot>
-                        <tr class="border-t border-slate-200">
-                            <td colspan="2" class="pt-2 font-medium text-slate-900">Total</td>
-                            <td class="pt-2 text-right font-semibold text-slate-900">Tk {{ number_format((float) $payment->amount) }}</td>
-                        </tr>
-                    </tfoot>
-                </table>
+                    @endforeach
+                    <tr class="bg-slate-50">
+                        <td colspan="3" class="font-semibold text-slate-900">Total</td>
+                        <td class="text-right font-semibold text-slate-900">{{ $tk($payment->amount) }}</td>
+                    </tr>
+                </x-admin.table>
             </x-admin.card>
         </div>
 
+        {{-- side: who, and the order it belongs to --}}
         <div class="space-y-6">
-            <x-admin.card title="Student">
-                <p class="font-medium text-slate-900">{{ $payment->student->name }}</p>
-                <p class="text-sm text-slate-500">{{ $payment->student->email }}</p>
-            </x-admin.card>
+            <x-admin.student-card :student="$payment->student" />
 
             <x-admin.card title="Order">
-                <dl class="space-y-2 text-sm">
-                    <div class="flex justify-between"><dt class="text-slate-500">Order no</dt><dd class="font-medium text-slate-900">{{ $payment->order->order_no }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-slate-500">Order total</dt><dd>Tk {{ number_format((float) $payment->order->total) }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-slate-500">Paid so far</dt><dd>Tk {{ number_format((float) $payment->order->paid_amount) }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-slate-500">Still due</dt><dd>Tk {{ number_format($payment->order->dueAmount()) }}</dd></div>
-                </dl>
-            </x-admin.card>
-
-            <x-admin.card title="Submitted via">
-                <dl class="space-y-2 text-sm">
-                    <div class="flex justify-between"><dt class="text-slate-500">Method</dt><dd class="uppercase">{{ $payment->method->value }}</dd></div>
-                    @if ($payment->provider)
-                        <div class="flex justify-between"><dt class="text-slate-500">Provider</dt><dd>{{ $payment->provider }}</dd></div>
-                    @endif
-                    @if ($payment->sender_account)
-                        <div class="flex justify-between"><dt class="text-slate-500">From</dt><dd class="font-mono">{{ $payment->sender_account }}</dd></div>
-                    @endif
-                    @if ($payment->trx_id)
-                        <div class="flex justify-between"><dt class="text-slate-500">TrxID</dt><dd class="font-mono">{{ $payment->trx_id }}</dd></div>
-                    @endif
-                    @if ($payment->account)
-                        <div class="flex justify-between"><dt class="text-slate-500">To our account</dt><dd>{{ $payment->account->account_no ?? $payment->account->provider }}</dd></div>
-                    @endif
-                    <div class="flex justify-between"><dt class="text-slate-500">Paid at</dt><dd>{{ $payment->paid_at?->format('d M Y, h:i A') ?? '—' }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-slate-500">Submitted</dt><dd>{{ $payment->created_at->format('d M Y, h:i A') }}</dd></div>
-                    @if ($payment->verifier)
-                        <div class="flex justify-between"><dt class="text-slate-500">Handled by</dt><dd>{{ $payment->verifier->name }}</dd></div>
-                    @endif
-                    @if ($payment->note)
-                        <div class="pt-1 text-slate-500">"{{ $payment->note }}"</div>
-                    @endif
-                </dl>
+                <x-slot:actions>
+                    <x-admin.button :href="route('admin.orders.show', $order)" variant="secondary" size="sm">Open</x-admin.button>
+                </x-slot:actions>
+                <div class="mb-2 flex items-center justify-between gap-2">
+                    <span class="font-medium text-slate-900">{{ $order->order_no }}</span>
+                    <x-admin.order-status :status="$order->status" />
+                </div>
+                <x-admin.info-list :items="[
+                    'Order total' => $tk($order->total),
+                    'Paid so far' => $tk($order->paid_amount),
+                    'Still due' => $tk(in_array($order->status->value, ['expired', 'cancelled']) ? 0 : $order->dueAmount()),
+                ]" />
             </x-admin.card>
         </div>
     </div>

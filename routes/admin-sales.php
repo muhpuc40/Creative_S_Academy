@@ -2,6 +2,7 @@
 
 // Loaded from routes/web.php INSIDE the admin group (login + active admin required).
 
+use App\Http\Controllers\Admin\Sales\OrderController;
 use App\Http\Controllers\Admin\Sales\PaymentAccountController;
 use App\Http\Controllers\Admin\Sales\PaymentComboController;
 use App\Http\Controllers\Admin\Sales\PaymentVerificationController;
@@ -9,6 +10,10 @@ use App\Http\Controllers\Admin\Sales\PaymentVoucherController;
 use Illuminate\Support\Facades\Route;
 
 // Payments: submitted by students (TrxID etc.), awaiting (or already given) admin verification
+// Orders: read-only list + detail, opened by order number (CSA-2611-0001), not the id
+Route::get('orders', [OrderController::class, 'index'])->name('admin.orders.index');
+Route::get('orders/{order:order_no}', [OrderController::class, 'show'])->where('order', '[A-Za-z0-9-]{1,30}')->name('admin.orders.show');
+
 Route::get('payments', [PaymentVerificationController::class, 'index'])->name('admin.payments.index');
 Route::get('payments/{payment}', [PaymentVerificationController::class, 'show'])->whereNumber('payment')->name('admin.payments.show');
 Route::patch('payments/{payment}/verify', [PaymentVerificationController::class, 'verify'])->whereNumber('payment')->name('admin.payments.verify');
