@@ -5,6 +5,7 @@
 use App\Http\Controllers\Admin\System\FileTypeController;
 use App\Http\Controllers\Admin\System\GoogleMeetController;
 use App\Http\Controllers\Admin\System\LogController;
+use App\Http\Controllers\Admin\System\MetaPixelController;
 use App\Http\Controllers\Admin\System\SecurityCheckController;
 use App\Http\Controllers\Admin\System\ServerController;
 use App\Http\Controllers\Admin\System\SmsSettingController;
@@ -32,6 +33,10 @@ Route::put('system/sms', [SmsSettingController::class, 'update'])->name('admin.s
 Route::get('system/sms/balance', [SmsSettingController::class, 'balance'])
     ->middleware('throttle:20,1,sms-balance')
     ->name('admin.sms-settings.balance');
+
+// Meta Pixel of the student website (sent in GET /api/v1/home): saved in the database, no redeploy
+Route::get('system/meta-pixel', [MetaPixelController::class, 'edit'])->name('admin.meta-pixel.edit');
+Route::put('system/meta-pixel', [MetaPixelController::class, 'update'])->name('admin.meta-pixel.update');
 
 // Allowed upload formats (resource library, assignment files, email attachments), with a size limit per group
 Route::resource('system/file-types', FileTypeController::class)

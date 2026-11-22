@@ -47,6 +47,7 @@ return [
         ['label' => 'Server', 'route' => 'admin.server.index', 'icon' => 'monitor', 'match' => 'admin.server.*'],
         ['label' => 'Settings', 'route' => 'admin.settings.index', 'icon' => 'sliders', 'match' => 'admin.settings.*'],
         ['label' => 'File types', 'route' => 'admin.file-types.index', 'icon' => 'file', 'match' => 'admin.file-types.*'],
+        ['label' => 'Meta Pixel', 'route' => 'admin.meta-pixel.edit', 'icon' => 'activity', 'match' => 'admin.meta-pixel.*'],
         ['label' => 'Google Meet', 'route' => 'admin.google-meet.index', 'icon' => 'video', 'match' => 'admin.google-meet.*'],
         ['label' => 'Security Check', 'route' => 'admin.security-check.index', 'icon' => 'shield', 'match' => 'admin.security-check.*'],
     ],
