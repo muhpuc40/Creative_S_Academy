@@ -19,7 +19,7 @@ class CoursePrice extends Model
     protected static function booted(): void
     {
         static::updating(function (CoursePrice $price) {
-            if ($price->isDirty(['actual_price', 'discount_type', 'discount_value'])) {
+            if ($price->isDirty(['actual_price', 'discount_type', 'discount_value', 'access_days', 'renewal_fee', 'renewal_days'])) {
                 throw new LogicException('A price cannot be edited. Use Course::changePrice() to create a new price.');
             }
         });
@@ -31,6 +31,9 @@ class CoursePrice extends Model
             'actual_price' => 'decimal:2',
             'discount_value' => 'decimal:2',
             'discount_type' => AmountType::class,
+            'access_days' => 'integer',
+            'renewal_fee' => 'decimal:2',
+            'renewal_days' => 'integer',
             'is_active' => 'boolean',
         ];
     }
@@ -59,6 +62,12 @@ class CoursePrice extends Model
         };
 
         return round(max($final, 0), 2);
+    }
+
+    /** Can a student whose access ran out (or is about to) pay to extend it? */
+    public function offersRenewal(): bool
+    {
+        return $this->renewal_fee !== null && (int) $this->renewal_days > 0;
     }
 
     /** True when the active installments add up to the final price (use before publishing). */

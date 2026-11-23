@@ -14,6 +14,10 @@ return new class extends Migration {
             $table->foreignId('course_list_id')->constrained('course_list')->restrictOnDelete();
             $table->foreignId('batch_list_id')->constrained('batch_list')->restrictOnDelete();
             $table->foreignId('course_prices_id')->constrained('course_prices')->restrictOnDelete();   // the immutable price row used
+            // A renewal: this item extends that enrollment's access (paid in full at the price's renewal_fee,
+            // no new enrollment or affiliate commission). null = a normal purchase. Its foreign key is added
+            // in the enrolled_user_list migration, because that table is created after this one.
+            $table->foreignId('renews_enrollment_id')->nullable();
             $table->string('payment_plan', 20)->default('full');           // full | installment
             $table->decimal('list_price', 12, 2);                          // course actual price
             $table->decimal('sale_price', 12, 2);                          // current price after the course's own discount

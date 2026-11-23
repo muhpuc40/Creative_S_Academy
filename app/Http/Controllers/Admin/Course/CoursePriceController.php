@@ -24,6 +24,11 @@ class CoursePriceController extends Controller
             'actual_price' => ['required', 'numeric', 'min:0', 'max:9999999999'],
             'discount_type' => ['nullable', Rule::enum(AmountType::class)],
             'discount_value' => ['nullable', 'numeric', 'min:0', Rule::when($request->input('discount_type') === 'percent', 'max:100')],
+            'access_days' => ['required', 'integer', 'min:1', 'max:3650'],
+            'renewal_fee' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
+            'renewal_days' => ['nullable', 'required_with:renewal_fee', 'integer', 'min:1', 'max:3650'],
+        ], [
+            'renewal_days.required_with' => 'Enter how many days one renewal adds.',
         ]);
 
         $type = $data['discount_type'] ?? null;
@@ -34,6 +39,11 @@ class CoursePriceController extends Controller
             $type ? AmountType::from($type) : null,
             $value,
             $request->boolean('copy_rules', true),
+            [
+                'access_days' => (int) $data['access_days'],
+                'renewal_fee' => isset($data['renewal_fee']) ? (float) $data['renewal_fee'] : null,
+                'renewal_days' => isset($data['renewal_fee']) ? (int) $data['renewal_days'] : null,
+            ],
         );
 
         return $this->toCourse($course, 'pricing', 'New price saved. The old price is kept in the history.');

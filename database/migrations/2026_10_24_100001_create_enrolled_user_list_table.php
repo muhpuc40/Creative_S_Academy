@@ -21,15 +21,33 @@ return new class extends Migration {
             $table->timestamp('enrolled_at')->useCurrent();
             $table->timestamp('revoked_at')->nullable();
             $table->string('revoke_reason')->nullable();
+            // Videos, recordings and resources open until this moment. Set at enrollment from the
+            // price's access_days (counted from the batch start or the enrollment, whichever is later);
+            // a paid renewal or the admin pushes it forward. null = no time limit.
+            $table->timestamp('access_expires_at')->nullable();
+            // Saved copy of ProgressService's result, so lists never recalculate. The true record is
+            // enrolled_user_course_progress. completed_at is set once, when progress first reaches 100%.
+            $table->decimal('progress_percent', 5, 2)->default(0);
+            $table->timestamp('completed_at')->nullable();
+            $table->timestamp('last_activity_at')->nullable();
             $table->timestamps();
 
             $table->index(['student_id', 'status']);
             $table->index(['course_list_id', 'batch_list_id']);
+            $table->index('access_expires_at');
+        });
+
+        // order_items.renews_enrollment_id (a renewal) points here; added now that this table exists.
+        Schema::table('order_items', function (Blueprint $table) {
+            $table->foreign('renews_enrollment_id')->references('id')->on('enrolled_user_list')->restrictOnDelete();
         });
     }
 
     public function down(): void
     {
+        Schema::table('order_items', function (Blueprint $table) {
+            $table->dropForeign(['renews_enrollment_id']);
+        });
         Schema::dropIfExists('enrolled_user_list');
     }
 };

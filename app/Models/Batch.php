@@ -98,6 +98,7 @@ class Batch extends Model
     public function seatsTaken(): int
     {
         return OrderItem::where('batch_list_id', $this->id)
+            ->whereNull('renews_enrollment_id')   // a renewal never takes a new seat
             ->where('status', OrderItemStatus::Active)
             ->whereHas('order', fn(Builder $q) => $q->live())
             ->count();

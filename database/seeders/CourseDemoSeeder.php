@@ -62,7 +62,7 @@ class CourseDemoSeeder extends Seeder
                 if ($oldPrice) {
                     $course->changePrice($oldPrice, null, 0, false);   // price history: old price stays in the table
                 }
-                $course->changePrice($price, $dType ? AmountType::from($dType) : null, $dValue, false);
+                $course->changePrice($price, $dType ? AmountType::from($dType) : null, $dValue, false, ['access_days' => 180, 'renewal_fee' => 2000, 'renewal_days' => 180]);
                 $this->paymentPlan($course, $plan, $modules);
             }
 

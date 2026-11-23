@@ -55,6 +55,17 @@ class OrderItem extends Model
         return $this->hasMany(OrderItemInstallment::class)->orderBy('sequence');
     }
 
+    /** For a renewal item: the enrollment whose access it extends. null = a normal purchase. */
+    public function renewsEnrollment(): BelongsTo
+    {
+        return $this->belongsTo(Enrollment::class, 'renews_enrollment_id');
+    }
+
+    public function isRenewal(): bool
+    {
+        return $this->renews_enrollment_id !== null;
+    }
+
     /** @return HasOne<Enrollment, $this> */
     public function enrollment(): HasOne
     {

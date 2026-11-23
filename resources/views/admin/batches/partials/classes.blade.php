@@ -12,6 +12,7 @@
         types: {{ \Illuminate\Support\Js::from($itemTypes) }},
         show(mode, action, form) { this.mode = mode; this.action = action; this.form = form; this.meetError = ''; this.open = true; },
         get isLive() { return this.types[this.form.course_module_items_id] === 'live'; },
+        get isRecorded() { return this.types[this.form.course_module_items_id] === 'recorded'; },
         meetBusy: false, meetError: '',
         async generateMeet() {
             this.meetBusy = true; this.meetError = '';
@@ -130,7 +131,11 @@
                     </x-admin.select>
 
                     <div class="grid grid-cols-2 gap-3">
-                        <x-admin.input id="class_start" name="class_start_time" type="datetime-local" label="Start" x-model="form.class_start_time" required />
+                        {{-- a recorded video opens for students at this time; a live class starts then --}}
+                        <div>
+                            <label for="class_start" class="mb-1.5 block text-sm font-medium text-slate-700" x-text="isRecorded ? 'Available from' : 'Start'">Start</label>
+                            <x-admin.input id="class_start" name="class_start_time" type="datetime-local" x-model="form.class_start_time" required />
+                        </div>
                         <x-admin.input id="class_duration" name="duration_minutes" type="number" min="1" max="600" label="Minutes" x-model="form.duration_minutes" required />
                     </div>
 

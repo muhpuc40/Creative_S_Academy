@@ -1,6 +1,8 @@
 @php
     $held = $batch->classes->where('status', \App\Enums\ClassStatus::Held)->count();
+    // live classes only: a recorded video is not a class anyone attends
     $nextClass = $batch->classes
+        ->filter(fn ($c) => $c->item?->item_type === \App\Enums\ItemType::Live)
         ->where('status', \App\Enums\ClassStatus::Scheduled)
         ->filter(fn ($c) => $c->class_start_time->isFuture())
         ->sortBy('class_start_time')->first();
@@ -44,13 +46,13 @@
 
         <x-admin.card>
             <div class="px-5 py-4">
-                <h3 class="font-semibold text-slate-900">Next class</h3>
+                <h3 class="font-semibold text-slate-900">Next live class</h3>
                 @if ($nextClass)
                     <p class="mt-2 text-sm font-medium text-slate-900">{{ $nextClass->item?->module?->title }}</p>
                     <p class="mt-0.5 text-sm text-slate-500">{{ $nextClass->class_start_time->format('D, d M Y · h:i A') }}</p>
                     <p class="mt-0.5 text-xs text-slate-400">{{ $nextClass->class_start_time->diffForHumans() }}</p>
                 @else
-                    <p class="mt-2 text-sm text-slate-500">No upcoming class. <button type="button" class="text-indigo-600 underline" @click="go('classes')">Add one</button>.</p>
+                    <p class="mt-2 text-sm text-slate-500">No upcoming live class. <button type="button" class="text-indigo-600 underline" @click="go('classes')">Add one</button>.</p>
                 @endif
             </div>
         </x-admin.card>

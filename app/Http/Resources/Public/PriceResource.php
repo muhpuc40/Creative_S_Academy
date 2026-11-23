@@ -15,6 +15,8 @@ class PriceResource extends JsonResource
             'discount_type' => $this->discount_type?->value,
             'discount_value' => (float) $this->discount_value,
             'final' => $this->finalPrice(),
+            'access_days' => (int) $this->access_days,
+            'renewal' => $this->offersRenewal() ? ['fee' => (float) $this->renewal_fee, 'days' => (int) $this->renewal_days] : null,
         ];
     }
 }

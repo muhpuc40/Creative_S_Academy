@@ -108,16 +108,23 @@ class Course extends Model
      * Change the price: the old row is kept (for students who already enrolled)
      * and a new active row is created. Installment rules are copied to the new
      * price unless $copyRules is false.
+     *
+     * $access = ['access_days' => 180, 'renewal_fee' => 2000 | null, 'renewal_days' => 180 | null].
+     * Leave it null to keep the current price's access and renewal settings.
      */
     public function changePrice(
         float $actualPrice,
         ?AmountType $discountType = null,
         float $discountValue = 0,
         bool $copyRules = true,
+        ?array $access = null,
     ): CoursePrice {
-        return DB::transaction(function () use ($actualPrice, $discountType, $discountValue, $copyRules) {
+        return DB::transaction(function () use ($actualPrice, $discountType, $discountValue, $copyRules, $access) {
             /** @var \App\Models\CoursePrice|null $old */
             $old = $this->prices()->where('is_active', true)->latest('id')->first();
+
+            $access ??= $old ? $old->only(['access_days', 'renewal_fee', 'renewal_days']) : [];
+            $renewalFee = $access['renewal_fee'] ?? null;
 
             $this->prices()->where('is_active', true)->update(['is_active' => false]);
             /** @var \App\Models\CoursePrice $new */
@@ -125,6 +132,9 @@ class Course extends Model
                 'actual_price' => $actualPrice,
                 'discount_type' => $discountType,
                 'discount_value' => $discountValue,
+                'access_days' => (int) ($access['access_days'] ?? 180),
+                'renewal_fee' => $renewalFee,
+                'renewal_days' => $renewalFee === null ? null : (int) ($access['renewal_days'] ?? 0),
                 'is_active' => true,
             ]);
 
