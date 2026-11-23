@@ -16,6 +16,7 @@ use App\Models\Enrollment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemInstallment;
+use Carbon\CarbonInterface;
 
 /**
  * What one course's payment state means, independent of every other course in the same order -
@@ -45,8 +46,8 @@ class EnrollmentService
     public function syncItemState(OrderItem $item, Order $order): void
     {
         $allPaid = $item->installments->isNotEmpty()
-            && $item->installments->every(fn (OrderItemInstallment $i) => $i->status === InstallmentStatus::Paid);
-        $anyPaid = $item->installments->contains(fn (OrderItemInstallment $i) => $i->status === InstallmentStatus::Paid);
+            && $item->installments->every(fn(OrderItemInstallment $i) => $i->status === InstallmentStatus::Paid);
+        $anyPaid = $item->installments->contains(fn(OrderItemInstallment $i) => $i->status === InstallmentStatus::Paid);
 
         if ($anyPaid) {
             $alreadyEnrolled = Enrollment::where('order_item_id', $item->id)->exists();
@@ -59,6 +60,7 @@ class EnrollmentService
                     'batch_list_id' => $item->batch_list_id,
                     'status' => EnrollmentStatus::Active,
                     'enrolled_at' => now(),
+                    'access_expires_at' => $this->accessExpiry($item),
                 ]);
 
                 $this->createAffiliateConversion($item, $order);
@@ -68,6 +70,24 @@ class EnrollmentService
         if ($allPaid) {
             $this->releaseCommission($item);
         }
+    }
+
+    /**
+     * When videos, recordings and resources lock again: access_days of the price the student
+     * actually bought (a later price change never affects them), counted from the batch start or
+     * today, whichever is later. null = the price has no access limit.
+     */
+    private function accessExpiry(OrderItem $item): ?CarbonInterface
+    {
+        $days = (int) ($item->price?->access_days ?? 0);
+        if ($days < 1) {
+            return null;
+        }
+
+        $start = $item->batch?->start_date;
+        $from = $start && $start->isFuture() ? $start->copy()->startOfDay() : now();
+
+        return $from->copy()->addDays($days);
     }
 
     /** One row per order_item, made once, the moment it's first enrolled. */

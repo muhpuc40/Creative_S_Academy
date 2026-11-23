@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-/** One course inside an order, at the price it was bought for. Never edited after checkout. */
+
 class OrderItem extends Model
 {
     protected $table = 'order_items';
@@ -80,7 +80,7 @@ class OrderItem extends Model
     public function lockedAtModuleId(): ?int
     {
         $nextDue = $this->installments
-            ->filter(fn (OrderItemInstallment $i) => $i->status !== InstallmentStatus::Paid)
+            ->filter(fn(OrderItemInstallment $i) => $i->status !== InstallmentStatus::Paid)
             ->sortBy('sequence')
             ->first();
 
@@ -104,10 +104,13 @@ class OrderItem extends Model
             return false;
         }
 
-        $gate = CourseModule::with('curriculum')->find($gateModuleId);
-        $target = CourseModule::with('curriculum')->find($moduleId);
-        if (!$gate || !$target) {
-            return false;
+        // withTrashed: a stage the admin deleted keeps its place in the course order, so the lock
+        // stays where it was instead of crashing (or opening the course).
+        $withStage = ['curriculum' => fn($q) => $q->withTrashed()];
+        $gate = CourseModule::with($withStage)->find($gateModuleId);
+        $target = CourseModule::with($withStage)->find($moduleId);
+        if (!$gate?->curriculum || !$target?->curriculum) {
+            return false;   // gate or target gone: stay locked
         }
 
         if ((int) $target->curriculum->sort_order !== (int) $gate->curriculum->sort_order) {
