@@ -6,6 +6,10 @@ use App\Http\Controllers\Admin\Course\Concerns\ManagesCourse;
 use App\Http\Controllers\Controller;
 use App\Models\CourseCurriculum;
 use App\Models\CourseModule;
+use App\Models\OrderItemInstallment;
+use App\Enums\InstallmentStatus;
+use App\Enums\OrderItemStatus;
+use App\Enums\OrderStatus;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,6 +46,19 @@ class CourseModuleController extends Controller
 
         if ($this->usedInBatch($module->items()->pluck('id'))) {
             return $this->toCourse($courseId, 'curriculum', 'This is used in a batch (class schedule, exam or assignment). Remove it from the batch first.', 'error');
+        }
+
+        // A student's unpaid installment is "due before" this module. Deleting it would remove that
+        // lock and open the rest of the course without paying.
+        $waiting = OrderItemInstallment::where('due_before_module_id', $module->id)
+            ->whereIn('status', [InstallmentStatus::Unpaid, InstallmentStatus::Pending])
+            ->whereHas('item', fn ($q) => $q->where('status', OrderItemStatus::Active)
+                ->whereHas('order', fn ($o) => $o->whereNotIn('status', [OrderStatus::Cancelled, OrderStatus::Expired])))
+            ->count();
+
+        if ($waiting > 0) {
+            return $this->toCourse($courseId, 'curriculum',
+                "Students still have {$waiting} unpaid ".\Illuminate\Support\Str::plural('installment', $waiting).' due before this module. It can be deleted once they are paid.', 'error');
         }
 
         try {

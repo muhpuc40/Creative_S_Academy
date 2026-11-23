@@ -70,12 +70,13 @@ Route::prefix('v1/{type}')->where(['type' => 'student|instructor|affiliate'])->g
 Route::prefix('v1/{type}')->where(['type' => 'student'])
     ->middleware(['auth:sanctum', EnsureUserType::class, TrackDeviceActivity::class])
     ->group(function () {
-        Route::post('checkout/quote', [CheckoutController::class, 'quote']);
-        Route::post('checkout/order', [CheckoutController::class, 'store']);
+        // per student, each with its own counter (named throttles)
+        Route::post('checkout/quote', [CheckoutController::class, 'quote'])->middleware('throttle:30,1,checkout-quote');
+        Route::post('checkout/order', [CheckoutController::class, 'store'])->middleware('throttle:10,1,checkout-order');
         Route::get('orders', [OrderController::class, 'index']);
         // by order number (CSA-2611-0001), never by the database id
         Route::get('orders/{orderNo}', [OrderController::class, 'show'])->where('orderNo', '[A-Za-z0-9-]{1,30}');
-        Route::post('payments', [PaymentController::class, 'store']);
+        Route::post('payments', [PaymentController::class, 'store'])->middleware('throttle:10,1,payment-submit');
         Route::get('payments', [PaymentController::class, 'index']);
         Route::get('enrollments', [EnrollmentController::class, 'index']); // "My courses"
     });

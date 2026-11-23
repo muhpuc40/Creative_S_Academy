@@ -36,13 +36,19 @@ class AffiliateAttribution extends Model
         return $this->belongsTo(AffiliateClick::class, 'affiliate_click_id');
     }
 
-    public function scopeOpen(Builder $query): Builder
+    /**
+     * Still earning: the referral window (expires_at) has not ended. Every purchase inside it is
+     * credited, so a referral that already converted once (status = converted) keeps counting.
+     */
+    public function scopeActive(Builder $query): Builder
     {
-        return $query->where('status', AttributionStatus::Open)->where('expires_at', '>', now());
+        return $query->whereIn('status', [AttributionStatus::Open, AttributionStatus::Converted])
+            ->where('expires_at', '>', now());
     }
 
-    public function isOpen(): bool
+    public function isActive(): bool
     {
-        return $this->status === AttributionStatus::Open && $this->expires_at?->isFuture();
+        return in_array($this->status, [AttributionStatus::Open, AttributionStatus::Converted], true)
+            && $this->expires_at?->isFuture();
     }
 }

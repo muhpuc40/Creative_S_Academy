@@ -8,6 +8,8 @@ use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentPlan;
 use App\Enums\VoucherStatus;
+use App\Enums\UserStatus;
+use App\Enums\AffiliateStatus;
 use App\Models\AffiliateAttribution;
 use App\Models\Batch;
 use App\Models\Course;
@@ -250,7 +252,13 @@ class CheckoutService
         $total = $priced['total'];
         $isFree = $total <= 0.0;
 
-        $attribution = AffiliateAttribution::open()->where('student_id', $student->id)->first();
+        // Every purchase inside the referral window is credited, while the affiliate is still
+        // active and approved (a suspended affiliate earns nothing on new orders).
+        $attribution = AffiliateAttribution::active()
+            ->where('student_id', $student->id)
+            ->whereHas('affiliate', fn ($q) => $q->where('status', UserStatus::Active)
+                ->whereHas('profile', fn ($p) => $p->where('status', AffiliateStatus::Approved)))
+            ->first();
 
         $order = Order::create([
             'order_no' => $this->nextOrderNo(),

@@ -77,8 +77,10 @@ class EnrollmentService
             return;
         }
 
-        $attribution = AffiliateAttribution::find($order->affiliate_attribution_id);
-        if (!$attribution) {
+        $attribution = AffiliateAttribution::with('affiliate.profile')->find($order->affiliate_attribution_id);
+
+        // Suspended (or no longer approved) since the order was placed: no new commission.
+        if (!$attribution || !$attribution->affiliate?->isActive() || !$attribution->affiliate->profile?->isApproved()) {
             return;
         }
 

@@ -67,7 +67,7 @@ class BatchController extends Controller
         $batch->load([
             'course:id,title,thumbnail',
             'instructor:id,name',
-            'classes.item.module', 'classes.item.content:id,name',
+            'classes.item.module', 'classes.item.content:id,name,url,file_path,file_disk',
             'classes.instructor:id,name', 'classes.liveInfo.recording:id,name',
             'exams.item.module', 'exams.item.content:id,name',
             'assignments.item.module', 'assignments.item.content:id,name',
