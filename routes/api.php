@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\ClassController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EnrollmentController;
+use App\Http\Controllers\Api\LearnController;
 use App\Http\Controllers\Api\LearningController;
 use App\Http\Controllers\Api\SubmissionController;
 use App\Http\Controllers\Api\OrderController;
@@ -85,15 +86,29 @@ Route::prefix('v1/{type}')->where(['type' => 'student'])
         Route::post('enrollments/{enrollmentId}/renew', [EnrollmentController::class, 'renew'])
             ->where('enrollmentId', '[0-9]+')->middleware('throttle:10,1,enrollment-renew');
         // live classes: the list for the Join button, and the tracked join (records attendance)
+        // an enrolled student's course pages (read only; actions use the endpoints below)
+        Route::prefix('learn/{courseSlug}')->where(['courseSlug' => '[A-Za-z0-9-]{1,200}'])->group(function () {
+            Route::get('/', [LearnController::class, 'overview']);
+            Route::get('outline', [LearnController::class, 'outline']);
+            Route::get('modules/{moduleId}', [LearnController::class, 'module'])->where('moduleId', '[0-9]+');
+            Route::get('schedule', [LearnController::class, 'schedule']);
+            Route::get('results', [LearnController::class, 'results']);
+            Route::get('attendance', [LearnController::class, 'attendance']);
+            Route::get('resources', [LearnController::class, 'resources']);
+        });
+
         Route::get('classes', [ClassController::class, 'index']);
         Route::post('classes/{classId}/join', [ClassController::class, 'join'])
             ->where('classId', '[0-9]+')->middleware('throttle:20,1,class-join');
         Route::get('classes/{classId}/recording', [ClassController::class, 'recording'])->where('classId', '[0-9]+');
         Route::post('classes/{classId}/recording/complete', [ClassController::class, 'completeRecording'])
             ->where('classId', '[0-9]+')->middleware('throttle:30,1,recording-complete');
+        Route::post('classes/{classId}/recording/position', [ClassController::class, 'recordingPosition'])
+            ->where('classId', '[0-9]+')->middleware('throttle:30,1,recording-position');
         // one curriculum item: play a recorded video, mark it complete, open a resource
         Route::get('items/{itemId}/play', [LearningController::class, 'play'])->where('itemId', '[0-9]+')->middleware('throttle:60,1,item-play');
         Route::post('items/{itemId}/complete', [LearningController::class, 'complete'])->where('itemId', '[0-9]+')->middleware('throttle:30,1,item-complete');
+        Route::post('items/{itemId}/position', [LearningController::class, 'position'])->where('itemId', '[0-9]+')->middleware('throttle:30,1,item-position');
         Route::get('items/{itemId}/resource', [LearningController::class, 'resource'])->where('itemId', '[0-9]+')->middleware('throttle:60,1,item-resource');
         // assignments and exams: details, and handing in one file (private storage)
         Route::get('assignments/{assignmentId}', [SubmissionController::class, 'assignment'])->where('assignmentId', '[0-9]+');

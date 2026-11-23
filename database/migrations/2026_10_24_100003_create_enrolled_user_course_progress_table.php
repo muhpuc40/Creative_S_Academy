@@ -5,8 +5,11 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * One row per enrollment and curriculum item the student has finished (or been excused from).
- * No row = not done yet. How an item counts as done:
+ * One row per enrollment and curriculum item the student has started watching, finished, or been
+ * excused from. Done = status completed or excused (no row, or status watching = not done yet).
+ * position_seconds keeps where the student stopped a video (a recorded item, or a live class's
+ * recording), so the player can resume there; it is kept after the item is completed too.
+ * How an item counts as done:
  *   recorded video    the student clicks "Mark as complete"          completed_via = marked
  *   live class        joined through the Join link                    attended
  *                     or marked its recording complete                recording
@@ -24,10 +27,11 @@ return new class extends Migration
             $table->foreignId('enrollment_id')->constrained('enrolled_user_list')->cascadeOnDelete();
             $table->foreignId('course_module_items_id')->constrained('course_module_items')->cascadeOnDelete();
             $table->foreignId('course_modules_id')->constrained('course_modules')->cascadeOnDelete();   // copied in for quick module totals
-            $table->string('status', 20)->default('completed');             // completed | excused
-            $table->string('completed_via', 20);                            // marked | attended | recording | opened | submitted | excused
+            $table->string('status', 20)->default('completed');             // watching | completed | excused
+            $table->string('completed_via', 20)->nullable();                // marked | attended | recording | opened | submitted | excused (null while watching)
             $table->foreignId('marked_by')->nullable()->constrained('admins')->nullOnDelete();   // the admin, for excused
-            $table->timestamp('completed_at')->useCurrent();
+            $table->timestamp('completed_at')->nullable();                  // null while watching
+            $table->unsignedInteger('position_seconds')->nullable();        // video resume point
             $table->timestamps();
 
             // short names: MySQL allows 64 characters

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 
 /** One checkout. Courses are on order_items; money actually sent is on payment_list (future Payment API). */
 class Order extends Model
@@ -77,11 +79,29 @@ class Order extends Model
         return $query->whereIn('status', [OrderStatus::Pending, OrderStatus::PartiallyPaid, OrderStatus::Paid]);
     }
 
-    /** The next free order number of this month: CSA-2611-0001, CSA-2611-0002, ... */
-    public static function nextOrderNo(): string
+    /**
+     * Creates the order with the next free order number. Two students checking out at the same
+     * moment can pick the same number; the second insert then hits the unique index, and is
+     * retried with a later number (inside a savepoint, so the caller's transaction carries on).
+     */
+    public static function createNumbered(array $attributes): self
+    {
+        for ($attempt = 0; ; $attempt++) {
+            try {
+                return DB::transaction(fn () => static::create(['order_no' => static::nextOrderNo($attempt)] + $attributes));
+            } catch (UniqueConstraintViolationException $e) {
+                if ($attempt >= 4) {
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    /** The next free order number of this month: CSA-2611-0001, CSA-2611-0002, ... ($skip: numbers to jump past, for a retry) */
+    public static function nextOrderNo(int $skip = 0): string
     {
         $prefix = 'CSA-'.now()->format('ym').'-';
-        $seq = static::where('order_no', 'like', $prefix.'%')->count() + 1;
+        $seq = static::where('order_no', 'like', $prefix.'%')->count() + 1 + $skip;
 
         do {
             $no = $prefix.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);

@@ -260,8 +260,7 @@ class CheckoutService
                 ->whereHas('profile', fn ($p) => $p->where('status', AffiliateStatus::Approved)))
             ->first();
 
-        $order = Order::create([
-            'order_no' => Order::nextOrderNo(),
+        $order = Order::createNumbered([
             'student_id' => $student->id,
             'affiliate_attribution_id' => $attribution?->id,
             'payment_combo_id' => $priced['combo']?->id,

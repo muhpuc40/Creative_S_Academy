@@ -58,8 +58,30 @@ class RenewalService
             ->first();
     }
 
+    /** The renewal block the website shows (My courses, course home). */
+    public function summary(Enrollment $enrollment): array
+    {
+        $price = $this->priceFor($enrollment);
+        $reason = $this->reasonFor($enrollment, $price);
+
+        return [
+            'can_renew' => $reason === self::OK,
+            'reason' => $reason === self::OK ? null : $reason,   // not_offered | not_needed | too_early | pending | not_enrolled
+            'opens_at' => $this->opensAt($enrollment)?->toIso8601String(),
+            'fee' => $price ? (float) $price->renewal_fee : null,
+            'days' => $price?->renewal_days,
+            'pending_order_no' => $reason === self::PENDING ? $this->pendingOrder($enrollment)?->order_no : null,
+        ];
+    }
+
     /** ok, or why the student can't renew now. */
     public function eligibility(Enrollment $enrollment): string
+    {
+        return $this->reasonFor($enrollment, $this->priceFor($enrollment));
+    }
+
+    /** eligibility() with the current renewal price already looked up (null = not offered). */
+    private function reasonFor(Enrollment $enrollment, ?CoursePrice $price): string
     {
         if (!$enrollment->isActive()) {
             return self::NOT_ENROLLED;
@@ -67,7 +89,7 @@ class RenewalService
         if (!$enrollment->access_expires_at) {
             return self::NOT_NEEDED;   // this course never locks
         }
-        if (!$this->priceFor($enrollment)) {
+        if (!$price) {
             return self::NOT_OFFERED;
         }
         if (now()->lt($this->opensAt($enrollment))) {
@@ -100,8 +122,7 @@ class RenewalService
             $fee = round((float) $price->renewal_fee, 2);
             $free = $fee <= 0.0;
 
-            $order = Order::create([
-                'order_no' => Order::nextOrderNo(),
+            $order = Order::createNumbered([
                 'student_id' => $enrollment->student_id,
                 'status' => $free ? OrderStatus::Paid : OrderStatus::Pending,
                 'subtotal' => $fee,

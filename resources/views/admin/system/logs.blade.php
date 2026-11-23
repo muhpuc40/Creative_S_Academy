@@ -1,6 +1,6 @@
 <x-admin.layout title="Application logs">
     <x-admin.page-header title="Application logs"
-        description="{{ $exists && $readable ? $lines . ' lines • ' . $size . ' • Updated ' . $updatedAt : '' }}">
+        description="{{ $exists && $readable ? ($truncated ? 'Last ' . $lines . ' lines of ' : $lines . ' lines • ') . $size . ' • Updated ' . $updatedAt : '' }}">
         <x-admin.button :href="route('admin.logs.index')">
             <x-admin.icon name="activity" class="size-4" /> Refresh
         </x-admin.button>

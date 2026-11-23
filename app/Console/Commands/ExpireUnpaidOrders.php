@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The ONE place an unpaid order expires. Scheduled every 5 minutes (routes/console.php).
+ * The ONE place an unpaid order expires. Scheduled every six hours (routes/console.php).
  *
  * A pending order whose payment window (Order::PAYMENT_WINDOW_HOURS after checkout) has
  * passed becomes "expired", which frees its batch seats and gives back its voucher - unless

@@ -22,6 +22,7 @@ return new class extends Migration
             $table->timestamp('created_at')->useCurrent();
 
             $table->index(['user_type', 'user_id']);
+            $table->index('created_at');                                    // the login history lists newest first
         });
     }
 

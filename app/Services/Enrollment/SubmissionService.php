@@ -99,8 +99,15 @@ class SubmissionService
             return $visible;
         }
 
-        $existing = $this->resultFor($enrollment, $work);
+        return $this->timing($work, $this->resultFor($enrollment, $work));
+    }
 
+    /**
+     * The time / state part of canSubmit(), for work the student may see:
+     * ok | cancelled | not_open | closed | already_submitted | graded. (CourseMap uses it too.)
+     */
+    public function timing(BatchAssignment|BatchExam $work, ?EnrollmentResult $existing): string
+    {
         if ($work instanceof BatchExam) {
             if ($work->status === ExamStatus::Cancelled) {
                 return self::CANCELLED;

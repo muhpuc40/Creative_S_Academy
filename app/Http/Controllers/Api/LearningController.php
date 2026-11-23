@@ -8,6 +8,7 @@ use App\Models\CourseCurriculum;
 use App\Models\CourseModuleItem;
 use App\Models\Enrollment;
 use App\Services\Enrollment\AccessService;
+use App\Services\Enrollment\CourseMap;
 use App\Services\Enrollment\ProgressService;
 use App\Support\StudentMedia;
 use Illuminate\Http\JsonResponse;
@@ -39,8 +40,9 @@ class LearningController extends Controller
 
     /**
      * GET /api/v1/student/items/{itemId}/play
-     * A recorded video: { type: file|external, url, expires_at, name }. An uploaded video gets a
-     * signed link valid for 2 hours; ask again for a fresh one.
+     * A recorded video: { type: file|external, url, expires_at, name, resume_at }. An uploaded video
+     * gets a signed link valid for 2 hours; ask again for a fresh one. resume_at = seconds where the
+     * student stopped last time (null = from the start).
      */
     public function play(Request $request, string $type, int $itemId): JsonResponse
     {
@@ -54,7 +56,37 @@ class LearningController extends Controller
             return self::refuse('no_video');
         }
 
-        return response()->json(['data' => ['name' => $content->name] + StudentMedia::content($content, $enrollment)]);
+        return response()->json(['data' => ['name' => $content->name] + StudentMedia::content($content, $enrollment)
+            + ['resume_at' => $this->progress->positionOf($enrollment, $item)]]);
+    }
+
+    /**
+     * POST /api/v1/student/items/{itemId}/position   { seconds }
+     * Where the student is in a recorded video, so it resumes there next time. The player sends it
+     * every few seconds while playing and on pause. Doesn't mark anything complete.
+     *
+     * Called very often, so it only checks what a resume point needs: the video exists, the
+     * student is enrolled in its course and inside the access period. (Saving a position never
+     * opens anything; play still runs every check.)
+     */
+    public function position(Request $request, string $type, int $itemId): JsonResponse
+    {
+        $seconds = (int) $request->validate(['seconds' => ['required', 'integer', 'min:0', 'max:86400']])['seconds'];
+
+        [$item, $enrollment] = $this->find($request, $itemId, ItemType::Recorded);
+        if (!$item) {
+            return self::refuse('not_found');
+        }
+        if (!$enrollment) {
+            return self::refuse(AccessService::NOT_ENROLLED);
+        }
+        if (!$enrollment->hasContentAccess()) {
+            return self::refuse(AccessService::ACCESS_EXPIRED);
+        }
+
+        $this->progress->savePosition($enrollment, $item, $seconds);
+
+        return response()->json(['data' => ['resume_at' => $seconds]]);
     }
 
     /**
@@ -64,12 +96,12 @@ class LearningController extends Controller
      */
     public function complete(Request $request, string $type, int $itemId): JsonResponse
     {
-        [$item, $enrollment, $refusal] = $this->open($request, $itemId, ItemType::Recorded);
+        [$item, $enrollment, $refusal, $map] = $this->open($request, $itemId, ItemType::Recorded);
         if ($refusal) {
             return $refusal;
         }
 
-        $this->progress->complete($enrollment, $item, 'marked');
+        $this->progress->complete($enrollment, $item, 'marked', $map);
 
         return response()->json(['data' => self::progressOf($enrollment->fresh())]);
     }
@@ -80,7 +112,7 @@ class LearningController extends Controller
      */
     public function resource(Request $request, string $type, int $itemId): JsonResponse
     {
-        [$item, $enrollment, $refusal] = $this->open($request, $itemId, ItemType::Resources);
+        [$item, $enrollment, $refusal, $map] = $this->open($request, $itemId, ItemType::Resources);
         if ($refusal) {
             return $refusal;
         }
@@ -90,7 +122,7 @@ class LearningController extends Controller
             return self::refuse('no_resource');
         }
 
-        $this->progress->complete($enrollment, $item, 'opened');
+        $this->progress->complete($enrollment, $item, 'opened', $map);
 
         return response()->json(['data' => ['name' => $resource->name] + StudentMedia::resource($resource, $enrollment)]);
     }
@@ -118,21 +150,41 @@ class LearningController extends Controller
      *
      * @return array{0: ?CourseModuleItem, 1: ?Enrollment, 2: ?JsonResponse}
      */
+    /**
+     * The item, the student's enrollment, a refusal if it can't be opened now, and the CourseMap
+     * the check used (pass it on to ProgressService so the course isn't loaded twice).
+     *
+     * @return array{0: ?CourseModuleItem, 1: ?Enrollment, 2: ?JsonResponse, 3: ?CourseMap}
+     */
     private function open(Request $request, int $itemId, ItemType $expected): array
+    {
+        [$item, $enrollment] = $this->find($request, $itemId, $expected);
+        if (!$item) {
+            return [null, null, self::refuse('not_found'), null];
+        }
+        if (!$enrollment) {
+            return [$item, null, self::refuse(AccessService::NOT_ENROLLED), null];
+        }
+
+        $map = CourseMap::for($enrollment);
+        $reason = $map->reason($item->id);
+        if ($reason !== AccessService::OK) {
+            return [$item, $enrollment, self::refuse($reason), $map];
+        }
+
+        return [$item, $enrollment, null, $map];
+    }
+
+    /** @return array{0: ?CourseModuleItem, 1: ?Enrollment} the item (null = no such item of that type) and the student's active enrollment in its course */
+    private function find(Request $request, int $itemId, ItemType $expected): array
     {
         $item = CourseModuleItem::with(['module', 'content', 'resource'])->find($itemId);
         if (!$item || $item->item_type !== $expected || !$item->module) {
-            return [null, null, self::refuse('not_found')];
+            return [null, null];
         }
 
         $courseId = CourseCurriculum::withTrashed()->whereKey($item->module->course_curriculum_id)->value('course_list_id');
-        $enrollment = $courseId ? $this->access->enrollmentFor($request->user(), (int) $courseId) : null;
 
-        $reason = $this->access->check($enrollment, $item);
-        if ($reason !== AccessService::OK) {
-            return [$item, $enrollment, self::refuse($reason)];
-        }
-
-        return [$item, $enrollment, null];
+        return [$item, $courseId ? $this->access->enrollmentFor($request->user(), (int) $courseId) : null];
     }
 }

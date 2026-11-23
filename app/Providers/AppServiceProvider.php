@@ -5,12 +5,14 @@ namespace App\Providers;
 use App\Models\Admin;
 use App\Models\Affiliate;
 use App\Models\Instructor;
+use App\Models\PersonalAccessToken;
 use App\Models\Student;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,6 +23,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // API tokens: last_used_at saved at most once a minute (see the model)
+        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+
         // Stored in the database as: admin | student | instructor | affiliate
         // (user_devices.user_type, user_login_infos.user_type, personal_access_tokens.tokenable_type)
         Relation::enforceMorphMap([

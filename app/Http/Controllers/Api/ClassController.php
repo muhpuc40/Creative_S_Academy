@@ -9,6 +9,7 @@ use App\Models\ClassAttendance;
 use App\Models\Enrollment;
 use App\Services\Enrollment\AccessService;
 use App\Services\Enrollment\ClassJoinService;
+use App\Services\Enrollment\CourseMap;
 use App\Services\Enrollment\ProgressService;
 use App\Support\StudentMedia;
 use Illuminate\Http\JsonResponse;
@@ -59,8 +60,16 @@ class ClassController extends Controller
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, BatchClassSchedule> $classes */
 
-        $rows = $classes->map(function (BatchClassSchedule $class) use ($enrollments, $attendance, $joins) {
-            $reason = $joins->check($enrollments[$class->batch_list_id] ?? null, $class);
+        // one CourseMap per enrollment (not per class): each course is loaded once
+        $maps = [];
+        $mapFor = function (int $batchId) use ($enrollments, &$maps): ?CourseMap {
+            $enrollment = $enrollments[$batchId] ?? null;
+
+            return $enrollment ? ($maps[$batchId] ??= CourseMap::for($enrollment)) : null;
+        };
+
+        $rows = $classes->map(function (BatchClassSchedule $class) use ($enrollments, $attendance, $joins, $mapFor) {
+            $reason = $joins->check($enrollments[$class->batch_list_id] ?? null, $class, $mapFor($class->batch_list_id));
             if ($reason === AccessService::INACTIVE) {
                 return null;   // hidden item / module / stage: not shown at all
             }
@@ -112,7 +121,34 @@ class ClassController extends Controller
 
         $content = $class->liveInfo->recording;
 
-        return response()->json(['data' => ['name' => $content->name] + StudentMedia::content($content, $enrollment)]);
+        return response()->json(['data' => ['name' => $content->name] + StudentMedia::content($content, $enrollment)
+            + ['resume_at' => app(ProgressService::class)->positionOf($enrollment, $class->item)]]);
+    }
+
+    /**
+     * POST /api/v1/student/classes/{classId}/recording/position   { seconds }
+     * Where the student is in the class recording, so it resumes there next time.
+     */
+    public function recordingPosition(Request $request, string $type, int $classId, ClassJoinService $joins, AccessService $access, ProgressService $progress): JsonResponse
+    {
+        $seconds = (int) $request->validate(['seconds' => ['required', 'integer', 'min:0', 'max:86400']])['seconds'];
+
+        // called every few seconds: only what a resume point needs (see LearningController::position)
+        $class = BatchClassSchedule::with('item')->find($classId);
+        if (!$class || $class->item?->item_type !== ItemType::Live) {
+            return LearningController::refuse('not_found');
+        }
+        $enrollment = $joins->enrollmentFor($request->user(), $class);
+        if (!$enrollment) {
+            return LearningController::refuse(AccessService::NOT_ENROLLED);
+        }
+        if (!$enrollment->hasContentAccess()) {
+            return LearningController::refuse(AccessService::ACCESS_EXPIRED);
+        }
+
+        $progress->savePosition($enrollment, $class->item, $seconds);
+
+        return response()->json(['data' => ['resume_at' => $seconds]]);
     }
 
     /**

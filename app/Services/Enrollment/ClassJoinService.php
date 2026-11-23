@@ -53,7 +53,8 @@ class ClassJoinService
     /**
      * OK, or why not: not_found | cancelled | an AccessService reason | too_early | ended | no_link.
      */
-    public function check(?Enrollment $enrollment, BatchClassSchedule $class): string
+    /** Pass $map when checking many classes of one enrollment, so the course is loaded once. */
+    public function check(?Enrollment $enrollment, BatchClassSchedule $class, ?CourseMap $map = null): string
     {
         $class->loadMissing('item', 'liveInfo');
 
@@ -69,9 +70,22 @@ class ClassJoinService
             return self::CANCELLED;
         }
 
-        $access = $this->access->check($enrollment, $class->item);
+        $access = $map ? $map->reason($class->item->id) : $this->access->check($enrollment, $class->item);
         if ($access !== AccessService::OK) {
             return $access;
+        }
+
+        return $this->timing($class);
+    }
+
+    /**
+     * The time part of check(), for a class the student may open: ok | cancelled | too_early | ended | no_link.
+     * (CourseMap uses it with its own access result.)
+     */
+    public function timing(BatchClassSchedule $class): string
+    {
+        if ($class->status === ClassStatus::Cancelled) {
+            return self::CANCELLED;
         }
 
         if (now()->lt($this->opensAt($class))) {

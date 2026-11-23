@@ -65,7 +65,6 @@ Route::middleware(['auth', EnsureAdminIsActive::class])->group(function () {
     Route::redirect('/', '/dashboard');
     Route::get('dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
     Route::post('logout', [LoginController::class, 'destroy'])->name('admin.logout');
-    Route::get('dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
     require __DIR__ . '/admin-account.php';
     require __DIR__ . '/admin-courses.php';

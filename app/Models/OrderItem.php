@@ -114,10 +114,9 @@ class OrderItem extends Model
             return false;   // gate or target gone: stay locked
         }
 
-        if ((int) $target->curriculum->sort_order !== (int) $gate->curriculum->sort_order) {
-            return (int) $target->curriculum->sort_order < (int) $gate->curriculum->sort_order;
-        }
+        // course order: stage (sort_order, id), then module (sort_order, id) - same as CourseMap
+        $key = fn (CourseModule $m) => [(int) $m->curriculum->sort_order, (int) $m->curriculum->id, (int) $m->sort_order, (int) $m->id];
 
-        return (int) $target->sort_order < (int) $gate->sort_order;
+        return $key($target) < $key($gate);
     }
 }
