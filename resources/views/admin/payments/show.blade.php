@@ -95,7 +95,9 @@
                     </x-slot:head>
                     @foreach ($payment->installments as $inst)
                         <tr>
-                            <td class="font-medium text-slate-900">{{ $inst->item?->course?->title ?? '—' }}</td>
+                            <td class="font-medium text-slate-900">{{ $inst->item?->course?->title ?? '—' }}
+                                @if ($inst->item?->renews_enrollment_id) <x-admin.badge color="amber">Renewal</x-admin.badge> @endif
+                            </td>
                             <td class="text-slate-500">{{ $inst->item?->batch?->name ?? '—' }}</td>
                             <td class="text-slate-500">{{ $inst->title }}</td>
                             <td class="text-right font-medium text-slate-900">{{ $tk($inst->amount) }}</td>

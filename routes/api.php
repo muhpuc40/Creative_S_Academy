@@ -3,8 +3,11 @@
 use App\Http\Controllers\Api\AffiliateClickController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\ClassController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EnrollmentController;
+use App\Http\Controllers\Api\LearningController;
+use App\Http\Controllers\Api\SubmissionController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PasswordResetController;
@@ -79,4 +82,24 @@ Route::prefix('v1/{type}')->where(['type' => 'student'])
         Route::post('payments', [PaymentController::class, 'store'])->middleware('throttle:10,1,payment-submit');
         Route::get('payments', [PaymentController::class, 'index']);
         Route::get('enrollments', [EnrollmentController::class, 'index']); // "My courses"
+        Route::post('enrollments/{enrollmentId}/renew', [EnrollmentController::class, 'renew'])
+            ->where('enrollmentId', '[0-9]+')->middleware('throttle:10,1,enrollment-renew');
+        // live classes: the list for the Join button, and the tracked join (records attendance)
+        Route::get('classes', [ClassController::class, 'index']);
+        Route::post('classes/{classId}/join', [ClassController::class, 'join'])
+            ->where('classId', '[0-9]+')->middleware('throttle:20,1,class-join');
+        Route::get('classes/{classId}/recording', [ClassController::class, 'recording'])->where('classId', '[0-9]+');
+        Route::post('classes/{classId}/recording/complete', [ClassController::class, 'completeRecording'])
+            ->where('classId', '[0-9]+')->middleware('throttle:30,1,recording-complete');
+        // one curriculum item: play a recorded video, mark it complete, open a resource
+        Route::get('items/{itemId}/play', [LearningController::class, 'play'])->where('itemId', '[0-9]+')->middleware('throttle:60,1,item-play');
+        Route::post('items/{itemId}/complete', [LearningController::class, 'complete'])->where('itemId', '[0-9]+')->middleware('throttle:30,1,item-complete');
+        Route::get('items/{itemId}/resource', [LearningController::class, 'resource'])->where('itemId', '[0-9]+')->middleware('throttle:60,1,item-resource');
+        // assignments and exams: details, and handing in one file (private storage)
+        Route::get('assignments/{assignmentId}', [SubmissionController::class, 'assignment'])->where('assignmentId', '[0-9]+');
+        Route::post('assignments/{assignmentId}/submission', [SubmissionController::class, 'submitAssignment'])
+            ->where('assignmentId', '[0-9]+')->middleware('throttle:10,1,assignment-submit');
+        Route::get('exams/{examId}', [SubmissionController::class, 'exam'])->where('examId', '[0-9]+');
+        Route::post('exams/{examId}/answer', [SubmissionController::class, 'submitExam'])
+            ->where('examId', '[0-9]+')->middleware('throttle:10,1,exam-submit');
     });

@@ -77,6 +77,20 @@ class Order extends Model
         return $query->whereIn('status', [OrderStatus::Pending, OrderStatus::PartiallyPaid, OrderStatus::Paid]);
     }
 
+    /** The next free order number of this month: CSA-2611-0001, CSA-2611-0002, ... */
+    public static function nextOrderNo(): string
+    {
+        $prefix = 'CSA-'.now()->format('ym').'-';
+        $seq = static::where('order_no', 'like', $prefix.'%')->count() + 1;
+
+        do {
+            $no = $prefix.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+            $seq++;
+        } while (static::where('order_no', $no)->exists());
+
+        return $no;
+    }
+
     /** What's still owed. 0 once fully paid. */
     public function dueAmount(): float
     {

@@ -62,7 +62,15 @@ class AccessService
         $module = $item->module;
         $stage = $module?->curriculum;   // null when the stage was deleted (soft delete)
 
-        if (!$enrollment || !$enrollment->isActive() || !$stage || (int) $stage->course_list_id !== (int) $enrollment->course_list_id) {
+        if (!$enrollment || !$enrollment->isActive()) {
+            return self::NOT_ENROLLED;
+        }
+
+        if (!$stage) {
+            return self::INACTIVE;   // its stage was deleted
+        }
+
+        if ((int) $stage->course_list_id !== (int) $enrollment->course_list_id) {
             return self::NOT_ENROLLED;
         }
 

@@ -26,6 +26,8 @@ class OrderResource extends JsonResource
             'items' => $this->items->map(fn ($item) => [
                 'course_id' => $item->course_list_id,
                 'course_title' => $item->course?->title,
+                'is_renewal' => $item->renews_enrollment_id !== null,
+                'renewed_until' => $item->renewed_until?->toIso8601String(),
                 'batch_id' => $item->batch_list_id,
                 'batch_name' => $item->batch?->name,
                 'payment_plan' => $item->payment_plan->value,

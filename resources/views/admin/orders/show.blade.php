@@ -43,7 +43,12 @@
                         <x-admin.badge :color="$item->payment_plan->value === 'installment' ? 'blue' : 'gray'">
                             {{ $item->payment_plan->value === 'installment' ? 'Installments' : 'Full payment' }}
                         </x-admin.badge>
-                        @if ($item->enrollment)
+                        @if ($item->renews_enrollment_id)
+                            <x-admin.badge color="amber">Renewal</x-admin.badge>
+                            @if ($item->renewed_until)
+                                <x-admin.badge color="green">Access until {{ $item->renewed_until->format('d M Y') }}</x-admin.badge>
+                            @endif
+                        @elseif ($item->enrollment)
                             <x-admin.badge color="green">Enrolled</x-admin.badge>
                         @endif
                     </x-slot:actions>

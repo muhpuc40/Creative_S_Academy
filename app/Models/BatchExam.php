@@ -46,6 +46,18 @@ class BatchExam extends Model
         return $this->belongsTo(CourseModuleItem::class, 'course_module_items_id');
     }
 
+    /** When the exam starts: exam_date + start_time (app time zone). */
+    public function startsAt(): \Carbon\CarbonInterface
+    {
+        return \Illuminate\Support\Carbon::parse($this->exam_date->toDateString().' '.$this->start_time);
+    }
+
+    /** When the exam time is up: start + duration. */
+    public function endsAt(): \Carbon\CarbonInterface
+    {
+        return $this->startsAt()->addMinutes($this->duration_minutes);
+    }
+
     public function isResultPublished(): bool
     {
         return $this->result_published_at !== null;

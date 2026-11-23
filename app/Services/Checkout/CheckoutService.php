@@ -261,7 +261,7 @@ class CheckoutService
             ->first();
 
         $order = Order::create([
-            'order_no' => $this->nextOrderNo(),
+            'order_no' => Order::nextOrderNo(),
             'student_id' => $student->id,
             'affiliate_attribution_id' => $attribution?->id,
             'payment_combo_id' => $priced['combo']?->id,
@@ -320,19 +320,6 @@ class CheckoutService
         }
 
         return $order->load(['items.course', 'items.batch', 'items.installments']);
-    }
-
-    private function nextOrderNo(): string
-    {
-        $prefix = 'CSA-' . now()->format('ym') . '-';
-        $seq = Order::where('order_no', 'like', $prefix . '%')->count() + 1;
-
-        do {
-            $no = $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
-            $seq++;
-        } while (Order::where('order_no', $no)->exists());
-
-        return $no;
     }
 
     /** For the quote endpoint: the same numbers, shaped for JSON instead of for persist(). */

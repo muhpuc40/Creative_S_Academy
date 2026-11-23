@@ -20,6 +20,7 @@ class OrderItem extends Model
     {
         return [
             'payment_plan' => PaymentPlan::class,
+            'renewed_until' => 'datetime',
             'list_price' => 'decimal:2',
             'sale_price' => 'decimal:2',
             'combo_discount' => 'decimal:2',

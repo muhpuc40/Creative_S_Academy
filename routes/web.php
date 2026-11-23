@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\ContentFileController;
+use App\Http\Controllers\StudentMediaController;
 use App\Http\Middleware\EnsureAdminIsActive;
 use App\Http\Middleware\LockAdminLoginChallenge;
 use Illuminate\Support\Facades\Route;
@@ -13,6 +14,29 @@ Route::get('media/content/{content}', ContentFileController::class)
     ->whereNumber('content')
     ->middleware(['signed', 'throttle:120,1,content-preview'])
     ->name('content.preview');
+
+// An enrolled student's private video / resource. Only the signed, 2-hour links from the student
+// API (App\Support\StudentMedia) work here; they are tied to the enrollment.
+Route::get('media/stream/{content}/{enrollment}', [StudentMediaController::class, 'content'])
+    ->whereNumber(['content', 'enrollment'])
+    ->middleware(['signed:relative', 'throttle:600,1,student-media'])
+    ->name('student.media.content');
+Route::get('media/resource/{resource}/{enrollment}', [StudentMediaController::class, 'resource'])
+    ->whereNumber(['resource', 'enrollment'])
+    ->middleware(['signed:relative', 'throttle:60,1,student-resource'])
+    ->name('student.media.resource');
+Route::get('media/assignment/{assignment}/{enrollment}', [StudentMediaController::class, 'assignment'])
+    ->whereNumber(['assignment', 'enrollment'])
+    ->middleware(['signed:relative', 'throttle:60,1,student-assignment-file'])
+    ->name('student.media.assignment');
+Route::get('media/exam-paper/{exam}/{enrollment}', [StudentMediaController::class, 'examPaper'])
+    ->whereNumber(['exam', 'enrollment'])
+    ->middleware(['signed:relative', 'throttle:60,1,student-exam-paper'])
+    ->name('student.media.exam-paper');
+Route::get('media/submission/{result}', [StudentMediaController::class, 'submission'])
+    ->whereNumber('result')
+    ->middleware(['signed:relative', 'throttle:60,1,student-submission'])
+    ->name('student.media.submission');
 
 Route::middleware('guest')->group(function () {
     // Admin login: 1. password  2. send code  3. verify code

@@ -18,6 +18,7 @@ return new class extends Migration {
             // no new enrollment or affiliate commission). null = a normal purchase. Its foreign key is added
             // in the enrolled_user_list migration, because that table is created after this one.
             $table->foreignId('renews_enrollment_id')->nullable();
+            $table->timestamp('renewed_until')->nullable();               // a paid renewal: the access end it set (also marks it as applied)
             $table->string('payment_plan', 20)->default('full');           // full | installment
             $table->decimal('list_price', 12, 2);                          // course actual price
             $table->decimal('sale_price', 12, 2);                          // current price after the course's own discount

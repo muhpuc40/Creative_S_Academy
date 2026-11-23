@@ -47,6 +47,15 @@ class EnrollmentService
     {
         $allPaid = $item->installments->isNotEmpty()
             && $item->installments->every(fn(OrderItemInstallment $i) => $i->status === InstallmentStatus::Paid);
+
+        // A renewal never enrolls (or pays an affiliate): once paid, it extends the access period.
+        if ($item->isRenewal()) {
+            if ($allPaid) {
+                $this->applyRenewal($item);
+            }
+
+            return;
+        }
         $anyPaid = $item->installments->contains(fn(OrderItemInstallment $i) => $i->status === InstallmentStatus::Paid);
 
         if ($anyPaid) {
@@ -70,6 +79,31 @@ class EnrollmentService
         if ($allPaid) {
             $this->releaseCommission($item);
         }
+    }
+
+    /**
+     * A paid renewal: access_expires_at moves to the later of today and the old end, plus the
+     * renewal_days of the price it was bought at. Applied once (renewed_until marks it).
+     */
+    private function applyRenewal(OrderItem $item): void
+    {
+        if ($item->renewed_until !== null) {
+            return;
+        }
+
+        $enrollment = Enrollment::whereKey($item->renews_enrollment_id)->lockForUpdate()->first();
+        $days = (int) ($item->price?->renewal_days ?? 0);
+        if (!$enrollment || $days < 1) {
+            return;
+        }
+
+        $from = $enrollment->access_expires_at && $enrollment->access_expires_at->isFuture()
+            ? $enrollment->access_expires_at->copy()
+            : now();
+        $until = $from->addDays($days);
+
+        $enrollment->forceFill(['access_expires_at' => $until])->save();
+        $item->forceFill(['renewed_until' => $until])->save();
     }
 
     /**
