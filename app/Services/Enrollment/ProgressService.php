@@ -72,7 +72,7 @@ class ProgressService
         $row->position_seconds = max(0, $seconds);
         $row->save();
 
-        // called every few seconds while watching: touch last_activity_at at most once a minute
+        // called about once a minute while watching: touch last_activity_at at most once a minute
         if (!$enrollment->last_activity_at || $enrollment->last_activity_at->lt(now()->subMinute())) {
             $enrollment->forceFill(['last_activity_at' => now()])->save();
         }

@@ -6,7 +6,7 @@ use Laravel\Sanctum\PersonalAccessToken as SanctumToken;
 
 /**
  * Sanctum's API token, with one change: Sanctum saves last_used_at on EVERY authenticated
- * request (one write per call - the video player alone calls every few seconds). Here it is
+ * request (one write per call, read-only calls included). Here it is
  * saved at most once a minute, like user_devices.last_used_at.
  */
 class PersonalAccessToken extends SanctumToken

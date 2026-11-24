@@ -133,7 +133,7 @@ class ClassController extends Controller
     {
         $seconds = (int) $request->validate(['seconds' => ['required', 'integer', 'min:0', 'max:86400']])['seconds'];
 
-        // called every few seconds: only what a resume point needs (see LearningController::position)
+        // called once a minute while watching: only what a resume point needs (see LearningController::position)
         $class = BatchClassSchedule::with('item')->find($classId);
         if (!$class || $class->item?->item_type !== ItemType::Live) {
             return LearningController::refuse('not_found');

@@ -63,9 +63,10 @@ class LearningController extends Controller
     /**
      * POST /api/v1/student/items/{itemId}/position   { seconds }
      * Where the student is in a recorded video, so it resumes there next time. The player sends it
-     * every few seconds while playing and on pause. Doesn't mark anything complete.
+     * once a minute while playing, plus once on pause / leaving the page (limited to 2 a minute:
+     * the resume point may be up to a minute behind). Doesn't mark anything complete.
      *
-     * Called very often, so it only checks what a resume point needs: the video exists, the
+     * Called often, so it only checks what a resume point needs: the video exists, the
      * student is enrolled in its course and inside the access period. (Saving a position never
      * opens anything; play still runs every check.)
      */
